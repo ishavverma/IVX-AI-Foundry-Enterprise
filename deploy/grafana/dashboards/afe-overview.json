@@ -1,0 +1,122 @@
+{
+  "dashboard": {
+    "title": "AFE Platform Overview",
+    "tags": ["afe", "platform"],
+    "timezone": "utc",
+    "panels": [
+      {
+        "id": 1,
+        "title": "HTTP Requests Rate",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(afe_http_requests_total[5m])",
+            "legendFormat": "{{method}} {{path}}"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Active Jobs",
+        "type": "stat",
+        "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "afe_jobs_active",
+            "legendFormat": "Active"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Job Queue Depth",
+        "type": "graph",
+        "gridPos": {"x": 18, "y": 0, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "afe_jobs_queued",
+            "legendFormat": "Queued"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "GPU Utilization",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "afe_gpu_utilization_percent",
+            "legendFormat": "GPU {{index}}"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "GPU Memory Usage",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "afe_gpu_memory_used_mb",
+            "legendFormat": "GPU {{index}}"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Training Loss (Live)",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "afe_training_loss",
+            "legendFormat": "{{experiment_id}}"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Tokens/Second",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "afe_tokens_per_second",
+            "legendFormat": "{{experiment_id}}"
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Storage Usage by Type",
+        "type": "piechart",
+        "gridPos": {"x": 0, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "afe_storage_bytes_total",
+            "legendFormat": "{{type}}"
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Organization Quotas",
+        "type": "table",
+        "gridPos": {"x": 12, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "afe_org_quota_usage_percent",
+            "format": "table"
+          }
+        ]
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "10s"
+  }
+}

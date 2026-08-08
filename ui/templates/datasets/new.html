@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Import Dataset — AI Foundry Enterprise{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade" style="max-width: 800px; margin: 0 auto;">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h4 fw-bold mb-1">Import Dataset</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Upload or specify a data corpus for pretraining or fine-tuning.</p>
+        </div>
+        <a href="/datasets" class="btn afe-btn-ghost"><i class="bi bi-arrow-left me-1"></i>Back</a>
+    </div>
+
+    <div class="afe-card">
+        <form method="POST" enctype="multipart/form-data" action="/datasets/new">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label class="form-label small fw-bold">Dataset Name</label>
+                <input type="text" name="name" class="form-control" placeholder="e.g. Enterprise Instruction Corpus v1" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label small fw-bold">Description</label>
+                <textarea name="description" class="form-control" rows="2" placeholder="Summary of data sources, domain focus, and license…"></textarea>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">Format</label>
+                    <select name="format" class="form-select">
+                        <option value="jsonl">JSON Lines (.jsonl)</option>
+                        <option value="csv">Comma-Separated (.csv)</option>
+                        <option value="json">Standard JSON (.json)</option>
+                        <option value="txt">Raw Plain Text (.txt / .md)</option>
+                        <option value="huggingface">HuggingFace Dataset Stream</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">Text Field Key</label>
+                    <input type="text" name="text_field" class="form-control" value="text" placeholder="e.g. text, content, prompt">
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label small fw-bold">Upload File</label>
+                <input type="file" name="file" class="form-control">
+                <div class="form-text text-secondary">Or leave blank to initialize with a built-in pretraining demo sample.</div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label small fw-bold">Paste Raw Sample Text (Optional)</label>
+                <textarea name="raw_text" class="form-control font-monospace" rows="4" placeholder="Or paste raw text directly here…"></textarea>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a href="/datasets" class="btn afe-btn-ghost">Cancel</a>
+                <button type="submit" class="btn afe-btn-primary"><i class="bi bi-cloud-upload me-1"></i>Create & Ingest</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Configure Fine-Tuning — AI Foundry Enterprise{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade" style="max-width: 800px; margin: 0 auto;">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h4 fw-bold mb-1">Configure Fine-Tuning & Alignment</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Fine-tune weights using LoRA, QLoRA (4-bit NF4), SFT, or DPO preference optimization.</p>
+        </div>
+        <a href="/finetuning" class="btn afe-btn-ghost"><i class="bi bi-arrow-left me-1"></i>Back</a>
+    </div>
+
+    <div class="afe-card">
+        <form method="POST" action="/finetuning/new">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label class="form-label small fw-bold">Task Name</label>
+                <input type="text" name="name" class="form-control" placeholder="e.g. AFE-Base-7B LoRA Code Alignment" required>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">Method</label>
+                    <select name="run_type" class="form-select">
+                        <option value="lora" selected>LoRA (Low-Rank Adaptation)</option>
+                        <option value="qlora">QLoRA (4-bit NF4 Quantized Base)</option>
+                        <option value="sft">Supervised Fine-Tuning (Full SFT)</option>
+                        <option value="dpo">Direct Preference Optimization (DPO)</option>
+                        <option value="rlhf">PPO Reinforcement Learning (RLHF)</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">Base Foundation Model</label>
+                    <select name="model_id" class="form-select" required>
+                        {% for m in models %}
+                        <option value="{{ m.id }}">{{ m.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label small fw-bold">Instruction / Preference Dataset</label>
+                <select name="dataset_id" class="form-select" required>
+                    {% for d in datasets %}
+                    <option value="{{ d.id }}">{{ d.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold">LoRA Rank ($r$)</label>
+                    <input type="number" name="lora_rank" class="form-control" value="16">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold">LoRA Alpha ($\alpha$)</label>
+                    <input type="number" name="lora_alpha" class="form-control" value="32">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold">Max Steps</label>
+                    <input type="number" name="max_steps" class="form-control" value="400">
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a href="/finetuning" class="btn afe-btn-ghost">Cancel</a>
+                <button type="submit" class="btn afe-btn-primary"><i class="bi bi-sliders2 me-1"></i>Launch Fine-Tuning</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

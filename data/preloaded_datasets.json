@@ -1,0 +1,35 @@
+{
+  "tinystories": {
+    "name": "TinyStories sample",
+    "description": "Synthetic short stories for language-model pretraining and tokenizer experiments.",
+    "dataset": "roneneldan/TinyStories",
+    "config": "default",
+    "split": "train",
+    "license": "CDLA-Sharing-1.0",
+    "license_url": "https://www.aicpa.org/cdma",
+    "source_url": "https://huggingface.co/datasets/roneneldan/TinyStories",
+    "field": "text"
+  },
+  "smoltalk": {
+    "name": "SmolTalk sample",
+    "description": "Synthetic multi-turn instruction conversations for supervised fine-tuning.",
+    "dataset": "HuggingFaceTB/smoltalk",
+    "config": "all",
+    "split": "train",
+    "license": "Apache-2.0 for the newly generated subsets; verify licenses of included public subsets before redistribution.",
+    "license_url": "https://www.apache.org/licenses/LICENSE-2.0",
+    "source_url": "https://huggingface.co/datasets/HuggingFaceTB/smoltalk",
+    "field": "messages"
+  },
+  "c4-en": {
+    "name": "C4 English sample",
+    "description": "Cleaned Common Crawl text for large-scale language-model pretraining. Use only with an explicit size limit.",
+    "dataset": "allenai/c4",
+    "config": "en",
+    "split": "train",
+    "license": "ODC-BY-1.0; Common Crawl terms also apply and the source may contain PII.",
+    "license_url": "https://opendatacommons.org/licenses/by/1-0/",
+    "source_url": "https://huggingface.co/datasets/allenai/c4",
+    "field": "text"
+  }
+}

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Model Factory — AI Foundry Enterprise{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade">
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <p class="text-uppercase text-secondary small mb-1">Model lifecycle workspace</p>
+            <h1 class="h4 fw-bold mb-1">Model Factory</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Define architectures, validate compute requirements, compile artifacts, and move approved models into the registry.</p>
+        </div>
+        <a href="/models/new" class="btn afe-btn-primary"><i class="bi bi-cpu me-1"></i>New Architecture</a>
+    </div>
+
+    <!-- Standard Hierarchy Presets -->
+    <div class="mb-4">
+        <h2 class="h6 fw-bold mb-3"><i class="bi bi-stars me-2 text-warning"></i>Architecture starting points</h2>
+        <div class="row g-3">
+            {% for p in presets %}
+            <div class="col-sm-6 col-lg-4 col-xl-3">
+                <div class="afe-card h-100 position-relative">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="fw-bold small">{{ p.name }}</span>
+                        <span class="afe-badge afe-badge-primary">{{ p.tier | upper }}</span>
+                    </div>
+                    <div class="d-flex align-items-baseline gap-2 mb-2">
+                        <span class="h4 fw-bold text-accent mb-0">
+                            {% if p.params >= 1000000000 %}
+                                {{ (p.params / 1000000000) | round(1) }}B
+                            {% else %}
+                                {{ (p.params / 1000000) | round(0) }}M
+                            {% endif %}
+                        </span>
+                        <span class="text-secondary small">parameters</span>
+                    </div>
+                    <div class="small text-secondary mb-3">
+                        <div><i class="bi bi-layers me-1"></i>{{ p.num_layers }} layers &bull; {{ p.d_model }} dim</div>
+                        <div><i class="bi bi-gpu-card me-1"></i>{{ (p.vram_fp16 / 1024) | round(1) }} GB VRAM (FP16)</div>
+                    </div>
+                    <div class="d-flex gap-1 flex-wrap">
+                        {% if p.use_ssm %}<span class="afe-badge afe-badge-info">Mamba SSM</span>{% endif %}
+                        {% if p.use_moe %}<span class="afe-badge afe-badge-warning">Sparse MoE</span>{% endif %}
+                        <span class="afe-badge afe-badge-success">GQA</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Compiled Models Table -->
+    <div class="afe-card">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h2 class="h6 fw-bold mb-0"><i class="bi bi-boxes me-2 text-primary"></i>Compiled model definitions</h2>
+        </div>
+        <table class="afe-table">
+            <thead>
+                <tr>
+                    <th>Architecture Name</th>
+                    <th>Type</th>
+                    <th>Layers / Hidden Dim</th>
+                    <th>Parameters</th>
+                    <th>VRAM (FP16)</th>
+                    <th>GFLOPs / Token</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in models %}
+                <tr>
+                    <td>
+                        <a href="/models/{{ m.id }}" class="fw-semibold text-decoration-none text-light">
+                            <i class="bi bi-box me-2 text-primary"></i>{{ m.name }}
+                        </a>
+                    </td>
+                    <td><span class="afe-badge afe-badge-info">{{ m.architecture_type | upper }}</span></td>
+                    <td>{{ m.num_layers }}L &bull; {{ m.d_model }}d</td>
+                    <td><span class="fw-bold">{{ (m.param_count / 1e9) | round(2) }}B</span></td>
+                    <td>{{ (m.vram_fp16_mb / 1024) | round(1) }} GB</td>
+                    <td>{{ m.gflops_per_token }}</td>
+                    <td><span class="afe-badge afe-badge-success"><i class="bi bi-check2"></i> Compiled</span></td>
+                    <td>
+                        <div class="d-flex gap-2">
+                            <a href="/models/{{ m.id }}" class="btn btn-sm afe-btn-ghost">View Code</a>
+                            <a href="/models/{{ m.id }}/download/code" class="btn btn-sm afe-btn-ghost" title="Download model.py"><i class="bi bi-download"></i></a>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="text-center text-secondary py-5">
+                        <i class="bi bi-boxes d-block mb-2" style="font-size: 2rem;"></i>
+                        No custom architectures compiled yet. Click <strong>New Architecture</strong> to design your model.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

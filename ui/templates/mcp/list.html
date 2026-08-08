@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Model Context Protocol (MCP) — AI Foundry Enterprise{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade">
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h4 fw-bold mb-1">Model Context Protocol (MCP) Server Registry</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Standardized connectors for dynamic external tool and database integration via stdio and SSE.</p>
+        </div>
+    </div>
+
+    <!-- MCP Servers Grid -->
+    <div class="row g-3">
+        {% for s in servers %}
+        <div class="col-md-6">
+            <div class="afe-card h-100">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="fw-bold text-light">{{ s.name }}</span>
+                    <span class="afe-badge afe-badge-info">{{ s.transport | upper }}</span>
+                </div>
+                <div class="p-2 rounded font-monospace small text-info mb-3 text-truncate" style="background: var(--afe-bg-elevated); font-size: 0.75rem;">
+                    {{ s.command }}
+                </div>
+                <div class="small fw-bold text-secondary mb-2">Exposed Capabilities:</div>
+                <div class="d-flex flex-wrap gap-1">
+                    {% for tool in s.tools %}
+                        <span class="afe-badge afe-badge-ghost small" style="font-size: 0.7rem;"><i class="bi bi-gear-wide-connected me-1"></i>{{ tool }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12 text-center text-secondary py-5">
+            <i class="bi bi-hdd-network d-block mb-2" style="font-size: 2rem;"></i>
+            No MCP server connectors configured.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

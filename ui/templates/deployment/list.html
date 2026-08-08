@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Inference Serving — AI Foundry Enterprise{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade">
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h4 fw-bold mb-1">Inference Serving & Deployment</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">High-throughput serving endpoints with OpenAI-compatible API protocol.</p>
+        </div>
+    </div>
+
+    <!-- OpenAI API Endpoint Integration Snippet -->
+    <div class="afe-card mb-4" style="background: linear-gradient(135deg, var(--afe-bg-card) 0%, rgba(108,92,231,0.08) 100%);">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <span class="fw-bold text-accent small"><i class="bi bi-code-slash me-2"></i>OpenAI Client Drop-in Connection</span>
+            <span class="afe-badge afe-badge-success">HTTP & SSE Ready</span>
+        </div>
+        <div class="p-3 rounded font-monospace small" style="background: var(--afe-bg-elevated); border: 1px solid var(--afe-border);">
+            <div class="text-secondary"># Python OpenAI SDK Integration</div>
+            <div><span class="text-warning">from</span> openai <span class="text-warning">import</span> OpenAI</div>
+            <div>client = OpenAI(base_url=<span class="text-success">"http://localhost:5000/inference/v1"</span>, api_key=<span class="text-success">"afe-local-key"</span>)</div>
+            <div>response = client.chat.completions.create(model=<span class="text-success">"afe-hybrid-7b"</span>, messages=[{<span class="text-info">"role"</span>: <span class="text-success">"user"</span>, <span class="text-info">"content"</span>: <span class="text-success">"Hello AFE!"</span>}], stream=<span class="text-warning">True</span>)</div>
+        </div>
+    </div>
+
+    <!-- Active Serving Endpoints Table -->
+    <div class="afe-card">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h2 class="h6 fw-bold mb-0"><i class="bi bi-hdd-network me-2 text-primary"></i>Active Inference Endpoints</h2>
+        </div>
+        <table class="afe-table">
+            <thead>
+                <tr>
+                    <th>Endpoint Name</th>
+                    <th>Port</th>
+                    <th>Backend</th>
+                    <th>GPU Devices</th>
+                    <th>Total Requests</th>
+                    <th>Average Latency</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ep in endpoints %}
+                <tr>
+                    <td class="fw-semibold text-light">
+                        <i class="bi bi-hdd-network me-2 text-primary"></i>{{ ep.name }}
+                    </td>
+                    <td><span class="font-monospace text-info">:{{ ep.port }}</span></td>
+                    <td><span class="afe-badge afe-badge-info">{{ ep.backend | upper }}</span></td>
+                    <td>GPU {{ ep.gpu_indices }}</td>
+                    <td><span class="fw-bold">{{ ep.total_requests }}</span> reqs</td>
+                    <td><span class="font-monospace text-success fw-bold">{{ ep.avg_latency_ms }} ms</span></td>
+                    <td><span class="afe-badge afe-badge-success"><i class="bi bi-check-circle me-1"></i>Serving</span></td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-secondary py-5">
+                        <i class="bi bi-hdd-network d-block mb-2" style="font-size: 2rem;"></i>
+                        No endpoints serving yet.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

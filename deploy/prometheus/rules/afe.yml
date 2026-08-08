@@ -1,0 +1,24 @@
+groups:
+  - name: afe-platform
+    rules:
+      - alert: AFEWebDown
+        expr: up{job="afe-web"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: AFE web application is unavailable
+      - alert: AFEHighJobFailureRate
+        expr: rate(afe_jobs_failed_total[10m]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: AFE background job failure rate is elevated
+      - alert: AFEGPUHot
+        expr: afe_gpu_temperature_celsius > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: AFE GPU temperature exceeds configured limit

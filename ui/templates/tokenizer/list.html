@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Tokenizer Studio — AI Foundry Enterprise{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade">
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h4 fw-bold mb-1">Tokenizer Studio</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Train, inspect, test, and export BPE, Byte-Level, and Unigram tokenizers.</p>
+        </div>
+        <a href="/tokenizer/new" class="btn afe-btn-primary"><i class="bi bi-cpu me-1"></i>Train Tokenizer</a>
+    </div>
+
+    <!-- Tokenizers Table -->
+    <div class="afe-card">
+        <table class="afe-table">
+            <thead>
+                <tr>
+                    <th>Tokenizer Name</th>
+                    <th>Algorithm</th>
+                    <th>Vocabulary Size</th>
+                    <th>Compression (Bytes/Tok)</th>
+                    <th>CJK Coverage</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in tokenizers %}
+                <tr>
+                    <td>
+                        <a href="/tokenizer/{{ t.id }}" class="fw-semibold text-decoration-none text-light">
+                            <i class="bi bi-type me-2 text-primary"></i>{{ t.name }}
+                        </a>
+                    </td>
+                    <td><span class="afe-badge afe-badge-info">{{ t.algorithm | upper }}</span></td>
+                    <td><span class="fw-bold">{{ t.vocab_size }}</span> tokens</td>
+                    <td>
+                        {% if t.compression_ratio %}
+                            <span class="fw-bold text-success">{{ t.compression_ratio }}</span> B/tok
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% if t.cjk_coverage_pct %}
+                            <span class="afe-badge afe-badge-primary">{{ t.cjk_coverage_pct }}%</span>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td><span class="afe-badge afe-badge-success"><i class="bi bi-check2"></i> Ready</span></td>
+                    <td>
+                        <div class="d-flex gap-2">
+                            <a href="/tokenizer/{{ t.id }}" class="btn btn-sm afe-btn-ghost">Studio & Test</a>
+                            <a href="/tokenizer/{{ t.id }}/export/huggingface" class="btn btn-sm afe-btn-ghost" title="Export HuggingFace tokenizer.json"><i class="bi bi-download"></i></a>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-secondary py-5">
+                        <i class="bi bi-cpu d-block mb-2" style="font-size: 2rem;"></i>
+                        No tokenizers trained yet. Click <strong>Train Tokenizer</strong> to build your first vocabulary.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

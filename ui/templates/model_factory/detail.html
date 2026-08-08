@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}{{ model.name }} — Model Factory{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade">
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <h1 class="h4 fw-bold mb-0">{{ model.name }}</h1>
+                <span class="afe-badge afe-badge-info">{{ model.architecture_type | upper }}</span>
+                <span class="afe-badge afe-badge-primary">{{ model.preset_tier | upper }}</span>
+                <span class="afe-badge afe-badge-success"><i class="bi bi-check2"></i> Compiled</span>
+            </div>
+            <p class="text-secondary mb-0 small">Standalone zero-dependency PyTorch implementation ready for training and export.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="/models/{{ model.id }}/download/code" class="btn afe-btn-ghost"><i class="bi bi-download me-1"></i>Download model.py</a>
+            <a href="/models/{{ model.id }}/download/config" class="btn afe-btn-ghost"><i class="bi bi-filetype-json me-1"></i>Download config.json</a>
+            <a href="/models" class="btn afe-btn-ghost"><i class="bi bi-arrow-left me-1"></i>All Models</a>
+        </div>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+            <div class="afe-stat-card">
+                <div class="afe-stat-value">
+                    {% if model.param_count >= 1000000000 %}
+                        {{ (model.param_count / 1000000000) | round(2) }}B
+                    {% else %}
+                        {{ (model.param_count / 1000000) | round(0) }}M
+                    {% endif %}
+                </div>
+                <div class="afe-stat-label">Total Parameters</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="afe-stat-card">
+                <div class="afe-stat-value text-accent">{{ (model.vram_fp16_mb / 1024) | round(1) }} <small style="font-size: 1rem;">GB</small></div>
+                <div class="afe-stat-label">Weights VRAM (FP16)</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="afe-stat-card">
+                <div class="afe-stat-value text-warning">{{ (model.vram_fp8_mb / 1024) | round(1) }} <small style="font-size: 1rem;">GB</small></div>
+                <div class="afe-stat-label">Weights VRAM (FP8)</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="afe-stat-card">
+                <div class="afe-stat-value text-info">{{ model.gflops_per_token }}</div>
+                <div class="afe-stat-label">GFLOPs / Forward Token</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <!-- Hyperparameters column -->
+        <div class="col-lg-4">
+            <div class="afe-card mb-3">
+                <h2 class="h6 fw-bold mb-3"><i class="bi bi-sliders me-2 text-primary"></i>Compiled Specs</h2>
+                <div class="small">
+                    <div class="d-flex justify-content-between py-1 border-bottom border-secondary-subtle">
+                        <span class="text-secondary">Hidden Dim ($d_{\text{model}}$):</span>
+                        <span class="font-monospace fw-bold">{{ model.d_model }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom border-secondary-subtle">
+                        <span class="text-secondary">Total Layers:</span>
+                        <span class="font-monospace fw-bold">{{ model.num_layers }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom border-secondary-subtle">
+                        <span class="text-secondary">Attention Heads ($h_q$):</span>
+                        <span class="font-monospace fw-bold">{{ model.num_heads }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom border-secondary-subtle">
+                        <span class="text-secondary">KV Heads (GQA $h_{kv}$):</span>
+                        <span class="font-monospace fw-bold">{{ model.num_kv_heads }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom border-secondary-subtle">
+                        <span class="text-secondary">Vocabulary Size:</span>
+                        <span class="font-monospace fw-bold">{{ model.vocab_size }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom border-secondary-subtle">
+                        <span class="text-secondary">Max Sequence Length:</span>
+                        <span class="font-monospace fw-bold">{{ model.max_seq_len }} tokens</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom border-secondary-subtle">
+                        <span class="text-secondary">SSM Ratio:</span>
+                        <span class="font-monospace fw-bold text-accent">{{ model.ssm_ratio }}</span>
+                    </div>
+                    {% if model.use_moe %}
+                    <div class="d-flex justify-content-between py-1">
+                        <span class="text-secondary">MoE Routing:</span>
+                        <span class="font-monospace fw-bold text-warning">Top-{{ model.top_k_experts }} of {{ model.num_experts }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- PyTorch code preview -->
+        <div class="col-lg-8">
+            <div class="afe-card">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h2 class="h6 fw-bold mb-0"><i class="bi bi-filetype-py me-2 text-warning"></i>Generated PyTorch Implementation (`model.py`)</h2>
+                    <button class="btn btn-sm afe-btn-ghost" onclick="navigator.clipboard.writeText(document.getElementById('codeBlock').innerText); alert('PyTorch code copied to clipboard!');">
+                        <i class="bi bi-clipboard me-1"></i>Copy
+                    </button>
+                </div>
+                <div class="rounded p-3" style="background: var(--afe-bg-elevated); border: 1px solid var(--afe-border); max-height: 480px; overflow-y: auto;">
+                    <pre class="mb-0"><code id="codeBlock" class="language-python" style="font-size: 0.8rem; color: var(--afe-text-primary);">{{ model.code }}</code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Audit Trail — AI Foundry Enterprise{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade">
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h4 fw-bold mb-1">Security Audit Trail & Governance</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Immutable cryptographic log of model modifications, data exports, and administrative actions.</p>
+        </div>
+    </div>
+
+    <!-- Audit Table -->
+    <div class="afe-card">
+        <table class="afe-table">
+            <thead>
+                <tr>
+                    <th>Action</th>
+                    <th>Resource</th>
+                    <th>User ID</th>
+                    <th>IP Address</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for l in logs %}
+                <tr>
+                    <td><span class="afe-badge afe-badge-primary font-monospace">{{ l.action }}</span></td>
+                    <td class="fw-medium text-light">{{ l.resource_type }}</td>
+                    <td class="small font-monospace text-secondary">{{ l.user_id or 'system-kernel' }}</td>
+                    <td class="font-monospace text-info small">{{ l.ip_address or '127.0.0.1' }}</td>
+                    <td class="small text-secondary">{{ l.created_at.strftime('%Y-%m-%d %H:%M:%S') if l.created_at else '—' }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center text-secondary py-5">
+                        <i class="bi bi-shield-check d-block mb-2" style="font-size: 2rem;"></i>
+                        No audit events recorded yet.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Pretraining Experiments — AI Foundry Enterprise{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade">
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h4 fw-bold mb-1">Distributed Training Platform</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Orchestrate multi-GPU pretraining with live loss metrics, gradient accumulation, and safetensors.</p>
+        </div>
+        <a href="/training/new" class="btn afe-btn-primary"><i class="bi bi-play-fill me-1"></i>New Pretraining Run</a>
+    </div>
+
+    <!-- Experiments Table -->
+    <div class="afe-card">
+        <table class="afe-table">
+            <thead>
+                <tr>
+                    <th>Experiment Name</th>
+                    <th>Status</th>
+                    <th>Steps / Progress</th>
+                    <th>Current Loss</th>
+                    <th>Best Loss</th>
+                    <th>Tokens / Sec</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in experiments %}
+                <tr>
+                    <td>
+                        <a href="/training/{{ e.id }}" class="fw-semibold text-decoration-none text-light">
+                            <i class="bi bi-lightning-charge me-2 text-warning"></i>{{ e.name }}
+                        </a>
+                    </td>
+                    <td>
+                        {% if e.status == 'completed' %}
+                            <span class="afe-badge afe-badge-success"><i class="bi bi-check2"></i> Completed</span>
+                        {% elif e.status == 'running' %}
+                            <span class="afe-badge afe-badge-info afe-animate-pulse"><i class="bi bi-arrow-repeat"></i> Running</span>
+                        {% else %}
+                            <span class="afe-badge afe-badge-warning">{{ e.status | capitalize }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="small fw-bold mb-1">{{ e.current_step }} / {{ e.max_steps }}</div>
+                        <div class="afe-progress" style="width: 120px;">
+                            <div class="afe-progress-bar" style="width: {{ (e.current_step / e.max_steps * 100) | int }}%"></div>
+                        </div>
+                    </td>
+                    <td><span class="font-monospace fw-bold">{{ e.current_loss or '—' }}</span></td>
+                    <td><span class="font-monospace fw-bold text-success">{{ e.best_loss or '—' }}</span></td>
+                    <td>{{ e.tokens_per_sec or '—' }} tok/s</td>
+                    <td>
+                        <a href="/training/{{ e.id }}" class="btn btn-sm afe-btn-ghost">View Curves</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-secondary py-5">
+                        <i class="bi bi-lightning-charge d-block mb-2" style="font-size: 2rem;"></i>
+                        No pretraining experiments launched yet. Click <strong>New Pretraining Run</strong> to begin.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

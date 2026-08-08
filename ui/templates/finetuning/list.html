@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Fine-Tuning & PEFT — AI Foundry Enterprise{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade">
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h4 fw-bold mb-1">Fine-Tuning & Alignment (PEFT, LoRA, DPO)</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Adapt base foundation models to specialized tasks with low-rank adapters and preference optimization.</p>
+        </div>
+        <a href="/finetuning/new" class="btn afe-btn-primary"><i class="bi bi-sliders2 me-1"></i>New Fine-Tuning Task</a>
+    </div>
+
+    <!-- Fine-Tuning Runs Table -->
+    <div class="afe-card">
+        <table class="afe-table">
+            <thead>
+                <tr>
+                    <th>Task Name</th>
+                    <th>Method</th>
+                    <th>Status</th>
+                    <th>Steps</th>
+                    <th>Best Loss</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in runs %}
+                <tr>
+                    <td class="fw-semibold text-light">
+                        <i class="bi bi-sliders2 me-2 text-primary"></i>{{ r.name }}
+                    </td>
+                    <td><span class="afe-badge afe-badge-info">{{ r.run_type | upper }}</span></td>
+                    <td>
+                        {% if r.status == 'completed' %}
+                            <span class="afe-badge afe-badge-success"><i class="bi bi-check2"></i> Completed</span>
+                        {% elif r.status == 'running' %}
+                            <span class="afe-badge afe-badge-warning afe-animate-pulse"><i class="bi bi-arrow-repeat"></i> Running</span>
+                        {% else %}
+                            <span class="afe-badge afe-badge-primary">{{ r.status | capitalize }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ r.current_step }} / {{ r.max_steps }}</td>
+                    <td><span class="font-monospace text-success fw-bold">{{ r.best_loss or '—' }}</span></td>
+                    <td class="small text-secondary">{{ r.created_at.strftime('%Y-%m-%d %H:%M') if r.created_at else '—' }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center text-secondary py-5">
+                        <i class="bi bi-sliders2 d-block mb-2" style="font-size: 2rem;"></i>
+                        No fine-tuning tasks launched yet. Click <strong>New Fine-Tuning Task</strong> to align your first model.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

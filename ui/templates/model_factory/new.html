@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+{% block title %}Model Architecture Builder — AI Foundry Enterprise{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade" x-data="architectureBuilder()">
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h4 fw-bold mb-1">Visual Architecture Builder</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Synthesize Hybrid Attention-SSM layers, tune GQA heads, and configure sparse MoE routing.</p>
+        </div>
+        <a href="/models" class="btn afe-btn-ghost"><i class="bi bi-arrow-left me-1"></i>Back</a>
+    </div>
+
+    <!-- Live Analytical Gauges -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+            <div class="afe-stat-card">
+                <div class="afe-stat-value" x-text="formattedParams">7.2B</div>
+                <div class="afe-stat-label">Total Parameters</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="afe-stat-card">
+                <div class="afe-stat-value text-accent" x-text="formattedActiveParams">7.2B</div>
+                <div class="afe-stat-label">Active / Token</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="afe-stat-card">
+                <div class="afe-stat-value text-warning" x-text="vramFp16Text">13.8 GB</div>
+                <div class="afe-stat-label">Weights (FP16)</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="afe-stat-card">
+                <div class="afe-stat-value text-info" x-text="gflopsText">14.4</div>
+                <div class="afe-stat-label">GFLOPs / Token</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Builder Form -->
+    <div class="row g-3">
+        <div class="col-lg-7">
+            <div class="afe-card">
+                <form method="POST" action="/models/new">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Architecture Name</label>
+                        <input type="text" name="name" x-model="config.name" class="form-control" placeholder="e.g. Enterprise Hybrid 7B Base" required>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Hierarchy Preset Tier</label>
+                            <select name="tier" x-model="config.tier" @change="applyPreset" class="form-select">
+                                <option value="nano">Nano (40M)</option>
+                                <option value="micro">Micro (250M)</option>
+                                <option value="small">Small (2B)</option>
+                                <option value="base" selected>Base (7B)</option>
+                                <option value="large">Large (20B)</option>
+                                <option value="xl">XL (50B)</option>
+                                <option value="xxl">XXL (150B)</option>
+                                <option value="moe_100b">MoE-100B</option>
+                                <option value="moe_1t">MoE-1T</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Vocabulary Size</label>
+                            <input type="number" name="vocab_size" x-model.number="config.vocab_size" @input.debounce.250ms="recalculate" class="form-control">
+                        </div>
+                    </div>
+
+                    <hr class="my-4" style="border-color: var(--afe-border);">
+
+                    <!-- Sliders -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <label class="form-label small fw-bold mb-0">Hidden Dimension ($d_{\text{model}}$)</label>
+                            <span class="small font-monospace text-primary" x-text="config.d_model"></span>
+                        </div>
+                        <input type="range" name="d_model" x-model.number="config.d_model" @input.debounce.250ms="recalculate" min="256" max="8192" step="128" class="form-range">
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <label class="form-label small fw-bold mb-0">Number of Layers</label>
+                            <span class="small font-monospace text-primary" x-text="config.num_layers"></span>
+                        </div>
+                        <input type="range" name="num_layers" x-model.number="config.num_layers" @input.debounce.250ms="recalculate" min="4" max="96" step="2" class="form-range">
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Attention Heads ($h_q$)</label>
+                            <input type="number" name="num_heads" x-model.number="config.num_heads" @input.debounce.250ms="recalculate" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Key-Value Heads (GQA $h_{kv}$)</label>
+                            <input type="number" name="num_kv_heads" x-model.number="config.num_kv_heads" @input.debounce.250ms="recalculate" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Maximum Sequence Length</label>
+                        <select name="max_seq_len" x-model.number="config.max_seq_len" @change="recalculate" class="form-select">
+                            <option value="4096">4K tokens</option>
+                            <option value="8192">8K tokens</option>
+                            <option value="32768" selected>32K tokens (Native)</option>
+                            <option value="65536">64K tokens (RoPE / YaRN)</option>
+                            <option value="131072">128K tokens (Extreme Context)</option>
+                            <option value="262144">256K tokens (SSM Long Range)</option>
+                        </select>
+                    </div>
+
+                    <hr class="my-4" style="border-color: var(--afe-border);">
+
+                    <!-- Hybrid & MoE Switches -->
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="use_ssm" id="ssmSwitch" x-model="config.use_ssm" @change="recalculate">
+                        <label class="form-check-label small fw-bold" for="ssmSwitch">Enable State-Space Model (SSM / Mamba) Layers</label>
+                        <div class="text-secondary small">Interleaves linear recurrence for $O(L)$ context complexity.</div>
+                    </div>
+
+                    <template x-if="config.use_ssm">
+                        <div class="mb-3 ps-4">
+                            <label class="form-label small fw-bold">Attention-to-SSM Ratio</label>
+                            <select name="ssm_attn_ratio" x-model="config.ssm_attn_ratio" @change="recalculate" class="form-select form-select-sm">
+                                <option value="1:7">1 Attention : 7 Mamba Layers (Jamba style)</option>
+                                <option value="1:3">1 Attention : 3 Mamba Layers</option>
+                                <option value="1:1">1 Attention : 1 Mamba Layer</option>
+                            </select>
+                        </div>
+                    </template>
+
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="use_moe" id="moeSwitch" x-model="config.use_moe" @change="recalculate">
+                        <label class="form-check-label small fw-bold" for="moeSwitch">Enable Mixture-of-Experts (MoE) Routing</label>
+                        <div class="text-secondary small">Fine-grained sparse feedforward sub-networks with top-$k$ softmax gating.</div>
+                    </div>
+
+                    <template x-if="config.use_moe">
+                        <div class="row g-2 mb-3 ps-4">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Number of Experts</label>
+                                <input type="number" name="num_experts" x-model.number="config.num_experts" @input.debounce.250ms="recalculate" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Top-K Active Experts</label>
+                                <input type="number" name="top_k_experts" x-model.number="config.top_k_experts" @input.debounce.250ms="recalculate" class="form-control form-control-sm">
+                            </div>
+                        </div>
+                    </template>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a href="/models" class="btn afe-btn-ghost">Cancel</a>
+                        <button type="submit" class="btn afe-btn-primary"><i class="bi bi-cpu me-1"></i>Compile & Export Architecture</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Architectural Blueprint Inspector -->
+        <div class="col-lg-5">
+            <div class="afe-card mb-3">
+                <h2 class="h6 fw-bold mb-3"><i class="bi bi-diagram-2 me-2 text-primary"></i>Layer Composition Blueprint</h2>
+                <div class="p-3 rounded mb-3 font-monospace small" style="background: var(--afe-bg-elevated); border: 1px solid var(--afe-border);">
+                    <div class="text-secondary mb-1"># Neural Block Flow</div>
+                    <div class="text-info">Input Token IDs (B, L)</div>
+                    <div class="ps-2 text-light">&darr; nn.Embedding(V, D)</div>
+                    <div class="ps-2 text-warning">&darr; RoPE (YaRN base=500k)</div>
+                    <div class="ps-2 my-2 py-1 px-2 rounded" style="background: rgba(108, 92, 231, 0.15); border-left: 2px solid var(--afe-primary);">
+                        <div class="fw-bold text-accent">N x HybridBlock:</div>
+                        <div class="ps-2 text-light" x-text="config.use_ssm ? '• RMSNorm &rarr; GQA / Mamba SSM (1:' + (config.ssm_attn_ratio.split(':')[1] || '7') + ')' : '• RMSNorm &rarr; GroupedQueryAttention' "></div>
+                        <div class="ps-2 text-light" x-text="config.use_moe ? '• RMSNorm &rarr; MoE Router (Top-' + config.top_k_experts + ' of ' + config.num_experts + ')' : '• RMSNorm &rarr; SwiGLU FeedForward' "></div>
+                    </div>
+                    <div class="ps-2 text-light">&darr; RMSNorm(D)</div>
+                    <div class="ps-2 text-success">&darr; nn.Linear(D, V) &rarr; Logits</div>
+                </div>
+
+                <!-- Memory breakdown -->
+                <div class="small">
+                    <div class="d-flex justify-content-between py-1 border-bottom border-secondary-subtle">
+                        <span class="text-secondary">FP8 Weight Footprint:</span>
+                        <span class="font-monospace fw-bold" x-text="vramFp8Text"></span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom border-secondary-subtle">
+                        <span class="text-secondary">INT4 Quantized Size:</span>
+                        <span class="font-monospace fw-bold" x-text="vramInt4Text"></span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom border-secondary-subtle">
+                        <span class="text-secondary">Est. Training VRAM (FP16):</span>
+                        <span class="font-monospace fw-bold text-warning" x-text="trainVramText"></span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1">
+                        <span class="text-secondary">KV Cache / Token:</span>
+                        <span class="font-monospace fw-bold text-info" x-text="kvCacheText"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+function architectureBuilder() {
+    return {
+        config: {
+            name: "AFE-Base-7B",
+            tier: "base",
+            vocab_size: 64000,
+            d_model: 4096,
+            num_layers: 32,
+            num_heads: 32,
+            num_kv_heads: 8,
+            max_seq_len: 32768,
+            use_ssm: true,
+            ssm_attn_ratio: "1:7",
+            use_moe: false,
+            num_experts: 16,
+            top_k_experts: 2
+        },
+        metrics: {
+            total_params: 7240000000,
+            active_params: 7240000000,
+            weights_fp16_mb: 13800,
+            weights_fp8_mb: 6900,
+            weights_int4_mb: 3450,
+            training_vram_fp16_mb: 52400,
+            gflops_forward_per_token: 14.48,
+            kv_cache_kb_per_token: 0.125
+        },
+        get formattedParams() {
+            const p = this.metrics.total_params;
+            return p >= 1e9 ? `${(p / 1e9).toFixed(2)}B` : `${(p / 1e6).toFixed(0)}M`;
+        },
+        get formattedActiveParams() {
+            const p = this.metrics.active_params;
+            return p >= 1e9 ? `${(p / 1e9).toFixed(2)}B` : `${(p / 1e6).toFixed(0)}M`;
+        },
+        get vramFp16Text() {
+            return `${(this.metrics.weights_fp16_mb / 1024).toFixed(1)} GB`;
+        },
+        get vramFp8Text() {
+            return `${(this.metrics.weights_fp8_mb / 1024).toFixed(1)} GB`;
+        },
+        get vramInt4Text() {
+            return `${(this.metrics.weights_int4_mb / 1024).toFixed(1)} GB`;
+        },
+        get trainVramText() {
+            return `~${(this.metrics.training_vram_fp16_mb / 1024).toFixed(1)} GB`;
+        },
+        get gflopsText() {
+            return this.metrics.gflops_forward_per_token.toFixed(1);
+        },
+        get kvCacheText() {
+            return `${this.metrics.kv_cache_kb_per_token} KB/tok`;
+        },
+        init() {
+            this.recalculate();
+        },
+        applyPreset() {
+            const presets = {
+                nano: {d_model: 384, num_layers: 6, num_heads: 6, num_kv_heads: 2, use_ssm: false, use_moe: false},
+                micro: {d_model: 768, num_layers: 12, num_heads: 12, num_kv_heads: 4, use_ssm: true, use_moe: false},
+                small: {d_model: 2048, num_layers: 24, num_heads: 16, num_kv_heads: 4, use_ssm: true, use_moe: false},
+                base: {d_model: 4096, num_layers: 32, num_heads: 32, num_kv_heads: 8, use_ssm: true, use_moe: false},
+                large: {d_model: 5120, num_layers: 48, num_heads: 40, num_kv_heads: 8, use_ssm: true, use_moe: false},
+                xl: {d_model: 6144, num_layers: 64, num_heads: 48, num_kv_heads: 8, use_ssm: true, use_moe: false},
+                xxl: {d_model: 8192, num_layers: 96, num_heads: 64, num_kv_heads: 8, use_ssm: true, use_moe: false},
+                moe_100b: {d_model: 4096, num_layers: 48, num_heads: 32, num_kv_heads: 8, use_ssm: true, use_moe: true, num_experts: 16, top_k_experts: 2},
+                moe_1t: {d_model: 8192, num_layers: 64, num_heads: 64, num_kv_heads: 8, use_ssm: true, use_moe: true, num_experts: 32, top_k_experts: 4}
+            };
+            const p = presets[this.config.tier];
+            if (p) {
+                Object.assign(this.config, p);
+                this.recalculate();
+            }
+        },
+        async recalculate() {
+            try {
+                const res = await fetch('/models/calculate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(this.config)
+                });
+                const data = await res.json();
+                this.metrics = data;
+            } catch (err) {
+                console.error("Calculation error:", err);
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

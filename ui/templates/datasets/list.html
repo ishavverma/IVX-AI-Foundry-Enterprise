@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Datasets — AI Foundry Enterprise{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade">
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h4 fw-bold mb-1">Dataset Management</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Curate, clean, deduplicate, and prepare high-quality token streams.</p>
+        </div>
+        <a href="/datasets/new" class="btn afe-btn-primary"><i class="bi bi-cloud-upload me-1"></i>Import Dataset</a>
+    </div>
+
+    <!-- Datasets Table -->
+    <div class="afe-card">
+        <table class="afe-table">
+            <thead>
+                <tr>
+                    <th>Dataset Name</th>
+                    <th>Format</th>
+                    <th>Rows / Sequences</th>
+                    <th>Size</th>
+                    <th>Quality Score</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in datasets %}
+                <tr>
+                    <td>
+                        <a href="/datasets/{{ d.id }}" class="fw-semibold text-decoration-none text-light">
+                            <i class="bi bi-database me-2 text-primary"></i>{{ d.name }}
+                        </a>
+                        {% if d.description %}
+                        <div class="text-secondary small mt-1">{{ d.description }}</div>
+                        {% endif %}
+                    </td>
+                    <td><span class="afe-badge afe-badge-info">{{ d.format | upper }}</span></td>
+                    <td>{{ d.row_count | default('—') }}</td>
+                    <td>
+                        {% if d.size_bytes %}
+                            {{ (d.size_bytes / 1024) | round(1) }} KB
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% if d.quality_score %}
+                            <span class="afe-badge afe-badge-success">{{ (d.quality_score * 100) | round(0) }}%</span>
+                        {% else %}
+                            <span class="text-secondary">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if d.status == 'ready' %}
+                            <span class="afe-badge afe-badge-success"><i class="bi bi-check2"></i> Ready</span>
+                        {% elif d.status == 'processing' %}
+                            <span class="afe-badge afe-badge-warning afe-animate-pulse"><i class="bi bi-arrow-repeat"></i> Processing</span>
+                        {% else %}
+                            <span class="afe-badge afe-badge-primary">Raw</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex gap-2">
+                            <a href="/datasets/{{ d.id }}" class="btn btn-sm afe-btn-ghost">View & Clean</a>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-secondary py-5">
+                        <i class="bi bi-database-exclamation d-block mb-2" style="font-size: 2rem;"></i>
+                        No datasets imported yet. Click <strong>Import Dataset</strong> to upload JSONL, CSV, Parquet, or text files.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

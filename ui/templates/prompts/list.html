@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Prompt Engineering Studio — AI Foundry Enterprise{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade">
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h4 fw-bold mb-1">Prompt Engineering Studio</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Design, parameterize (<code>{{ '{{variable}}' }}</code>), version, and evaluate system prompts.</p>
+        </div>
+        <a href="/prompts/new" class="btn afe-btn-primary"><i class="bi bi-pencil-square me-1"></i>New Template</a>
+    </div>
+
+    <!-- Prompts Grid -->
+    <div class="row g-3">
+        {% for p in prompts %}
+        <div class="col-md-6">
+            <div class="afe-card h-100">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="fw-bold text-light">{{ p.name }}</span>
+                    <span class="afe-badge afe-badge-primary">{{ p.version }}</span>
+                </div>
+                <p class="text-secondary small mb-2">{{ p.description }}</p>
+                {% if p.system_prompt %}
+                <div class="p-2 rounded mb-2 font-monospace small text-info" style="background: var(--afe-bg-elevated); font-size: 0.75rem;">
+                    <strong>System:</strong> {{ p.system_prompt }}
+                </div>
+                {% endif %}
+                <div class="p-2 rounded font-monospace small" style="background: var(--afe-bg-elevated); font-size: 0.8rem; line-height: 1.4;">
+                    {{ p.user_template }}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12 text-center text-secondary py-5">
+            <i class="bi bi-pencil-square d-block mb-2" style="font-size: 2rem;"></i>
+            No prompt templates created yet.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

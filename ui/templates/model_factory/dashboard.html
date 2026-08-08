@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}Model Factory — Dashboard{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/model_factory.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <!-- Header with New Model button -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Model Factory</h2>
+    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modelWizard">
+      <i class="bi bi-plus-lg"></i> New Model
+    </button>
+  </div>
+
+  <!-- Preset cards -->
+  <div class="mb-4">
+    <h5 class="fw-bold mb-3"><i class="bi bi-stars me-2 text-warning"></i>Architecture Presets</h5>
+    <div class="row g-3">
+      {% for p in presets %}
+      <div class="col-sm-6 col-lg-4 col-xl-3">
+        <div class="model-card h-100">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="fw-bold small">{{ p.name }}</span>
+            <span class="badge bg-primary">{{ p.tier | upper }}</span>
+          </div>
+          <div class="d-flex align-items-baseline gap-2 mb-2">
+            <span class="h5 fw-bold text-accent">
+              {% if p.params >= 1000000000 %}
+                {{ (p.params / 1000000000) | round(1) }}B
+              {% else %}
+                {{ (p.params / 1000000) | round(0) }}M
+              {% endif %}
+            </span>
+            <span class="text-muted small">parameters</span>
+          </div>
+          <div class="small text-muted mb-3">
+            <div><i class="bi bi-layers me-1"></i>{{ p.num_layers }} layers • {{ p.d_model }} dim</div>
+            <div><i class="bi bi-gpu-card me-1"></i>{{ (p.vram_fp16 / 1024) | round(1) }} GB VRAM (FP16)</div>
+          </div>
+          <div class="d-flex flex-wrap gap-1">
+            {% if p.use_ssm %}<span class="badge bg-info text-dark">Mamba SSM</span>{% endif %}
+            {% if p.use_moe %}<span class="badge bg-warning text-dark">Sparse MoE</span>{% endif %}
+            <span class="badge bg-success">GQA</span>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Compiled models table -->
+  <div class="model-card">
+    <h5 class="fw-bold mb-3"><i class="bi bi-boxes me-2 text-primary"></i>Compiled Models</h5>
+    <table class="table table-hover">
+      <thead class="table-light">
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Layers / Dim</th>
+          <th>Params</th>
+          <th>VRAM (FP16)</th>
+          <th>GFLOPs / Tok</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in models %}
+        <tr>
+          <td><a href="/models/{{ m.id }}" class="text-decoration-none">{{ m.name }}</a></td>
+          <td><span class="badge bg-info text-dark">{{ m.architecture_type | upper }}</span></td>
+          <td>{{ m.num_layers }}L • {{ m.d_model }}d</td>
+          <td>{{ (m.param_count / 1e9) | round(2) }}B</td>
+          <td>{{ (m.vram_fp16_mb / 1024) | round(1) }} GB</td>
+          <td>{{ m.gflops_per_token }}</td>
+          <td><span class="badge bg-success">Compiled</span></td>
+          <td>
+            <a href="/models/{{ m.id }}" class="btn btn-sm btn-outline-primary me-1">View</a>
+            <a href="/models/{{ m.id }}/download/code" class="btn btn-sm btn-outline-secondary" title="Download model.py"><i class="bi bi-download"></i></a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="text-center text-muted py-4">
+            No compiled models yet. Click <strong>New Model</strong> to start.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Model Builder Modal (wizard) -->
+  <div class="modal fade" id="modelWizard" tabindex="-1" aria-labelledby="modelWizardLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <form method="post" action="/models/new">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title" id="modelWizardLabel">Create New Model</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Model Name</label>
+              <input type="text" class="form-control" name="name" placeholder="My Awesome Model" required>
+            </div>
+            <div class="row g-3 mb-3">
+              <div class="col-md-4">
+                <label class="form-label">Layers</label>
+                <input type="number" class="form-control" name="num_layers" min="1" value="12" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Hidden Dim</label>
+                <input type="number" class="form-control" name="d_model" min="64" step="64" value="768" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Attention Heads</label>
+                <input type="number" class="form-control" name="num_heads" min="1" value="12" required>
+              </div>
+            </div>
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label">GPU Count</label>
+                <input type="number" class="form-control" name="gpu_count" min="0" value="1" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Memory (GB)</label>
+                <input type="number" class="form-control" name="memory_gb" min="1" value="16" required>
+              </div>
+            </div>
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="checkbox" name="use_ssm" id="useSsm">
+              <label class="form-check-label" for="useSsm">Enable Mamba SSM</label>
+            </div>
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="checkbox" name="use_moe" id="useMoe">
+              <label class="form-check-label" for="useMoe">Enable Sparse MoE</label>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Description (optional)</label>
+              <textarea class="form-control" name="description" rows="2"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-success">Create Model</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Workspaces & Projects — AI Foundry Enterprise{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade">
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h4 fw-bold mb-1">Workspaces & Multi-Tenant Projects</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Isolate datasets, checkpoints, models, and compute quota allocations.</p>
+        </div>
+    </div>
+
+    <!-- Projects Grid -->
+    <div class="row g-3">
+        {% for p in projects %}
+        <div class="col-md-6">
+            <div class="afe-card h-100">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="fw-bold text-light"><i class="bi bi-folder me-2 text-primary"></i>{{ p.name }}</span>
+                    <span class="afe-badge afe-badge-success">{{ p.status | upper }}</span>
+                </div>
+                <p class="text-secondary small mb-3">{{ p.description }}</p>
+                <div class="d-flex align-items-center justify-content-between pt-2 border-top border-secondary-subtle small text-secondary">
+                    <span>Slug: <code class="text-info">{{ p.slug }}</code></span>
+                    <span>Role: <strong class="text-light">Organization Admin</strong></span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

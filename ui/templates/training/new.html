@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Launch Pretraining — AI Foundry Enterprise{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade" style="max-width: 800px; margin: 0 auto;">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h4 fw-bold mb-1">Launch Pretraining Experiment</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Pair your compiled neural architecture with a tokenized dataset.</p>
+        </div>
+        <a href="/training" class="btn afe-btn-ghost"><i class="bi bi-arrow-left me-1"></i>Back</a>
+    </div>
+
+    <div class="afe-card">
+        <form method="POST" action="/training/new">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label class="form-label small fw-bold">Experiment Name</label>
+                <input type="text" name="name" class="form-control" placeholder="e.g. AFE-Base-7B Pretraining Run 01" required>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">Compiled Model Architecture</label>
+                    <select name="model_id" class="form-select" required>
+                        {% for m in models %}
+                        <option value="{{ m.id }}">{{ m.name }}</option>
+                        {% else %}
+                        <option value="">-- No models compiled yet --</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">Tokenized Dataset Corpus</label>
+                    <select name="dataset_id" class="form-select" required>
+                        {% for d in datasets %}
+                        <option value="{{ d.id }}">{{ d.name }}</option>
+                        {% else %}
+                        <option value="">-- No datasets ready yet --</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold">Max Training Steps</label>
+                    <input type="number" name="max_steps" class="form-control" value="1000">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold">Learning Rate</label>
+                    <input type="number" step="0.00001" name="learning_rate" class="form-control" value="0.0001">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold">Micro-Batch Size</label>
+                    <input type="number" name="batch_size" class="form-control" value="16">
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label small fw-bold">Mixed-Precision Mode</label>
+                <select name="precision" class="form-select">
+                    <option value="fp16" selected>FP16 (Half-Precision / Tensor Cores)</option>
+                    <option value="bf16">BF16 (Bfloat16 / Ampere+)</option>
+                    <option value="fp8">FP8 (Hopper / Blackwell Native)</option>
+                    <option value="fp32">FP32 (Full Precision Single)</option>
+                </select>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a href="/training" class="btn afe-btn-ghost">Cancel</a>
+                <button type="submit" class="btn afe-btn-primary"><i class="bi bi-lightning-charge me-1"></i>Start Distributed Training</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

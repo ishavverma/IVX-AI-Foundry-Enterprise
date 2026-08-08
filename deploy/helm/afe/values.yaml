@@ -1,0 +1,42 @@
+image:
+  repository: afe
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount: 2
+
+service:
+  type: ClusterIP
+  port: 5000
+
+environment:
+  AFE_ENV: production
+  AFE_DEBUG: "false"
+  AFE_QUEUE_BACKEND: redis
+  AFE_STORAGE_BACKEND: s3
+
+secret:
+  databaseUrl: ""
+  redisUrl: ""
+  secretKey: ""
+  s3Endpoint: ""
+  s3AccessKey: ""
+  s3SecretKey: ""
+  s3Bucket: afe
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "2"
+    memory: 2Gi
+
+worker:
+  enabled: true
+  replicas: 1
+
+postgresql:
+  enabled: false
+redis:
+  enabled: false

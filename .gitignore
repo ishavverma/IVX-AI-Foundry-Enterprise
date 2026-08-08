@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.env/
+ENV/
+
+# Poetry lock file (optional)
+poetry.lock
+
+# IDE / editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Build / distribution
+build/
+dist/
+*.egg-info/
+
+# Logs & temporary files
+*.log
+*.tmp
+*.bak
+
+# Jupyter notebooks checkpoints
+.ipynb_checkpoints/
+
+# Flask secret key files (if any)
+instance/
+
+# Docker files
+*.dockerignore
+Dockerfile
+docker-compose.yml
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+
+# Pytest cache
+.pytest_cache/
+
+# MyPy cache
+.mypy_cache/
+
+# VS Code settings folder (already covered but keep explicit)
+.vscode/
+
+# Misc
+*.sqlite3
+*.db
+roadmap.txt
+*.pdf
+.github/

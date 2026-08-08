@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}New Prompt Template — AI Foundry Enterprise{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade" style="max-width: 800px; margin: 0 auto;">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h4 fw-bold mb-1">Create Prompt Template</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Use double curly braces like <code>{{ '{{variable_name}}' }}</code> for dynamic parameters.</p>
+        </div>
+        <a href="/prompts" class="btn afe-btn-ghost"><i class="bi bi-arrow-left me-1"></i>Back</a>
+    </div>
+
+    <div class="afe-card">
+        <form method="POST" action="/prompts/new">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label class="form-label small fw-bold">Template Name</label>
+                <input type="text" name="name" class="form-control" placeholder="e.g. Code Review & Refactor Assistant" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label small fw-bold">Description</label>
+                <textarea name="description" class="form-control" rows="2" placeholder="Describe the intended domain and output format…"></textarea>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label small fw-bold">System Instructions</label>
+                <textarea name="system_prompt" class="form-control font-monospace" rows="2" placeholder="You are an expert compiler engineer…"></textarea>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label small fw-bold">User Template (with {{ '{{variables}}' }})</label>
+                <textarea name="user_template" class="form-control font-monospace" rows="4" placeholder="Analyze this {{language}} function:\n\n{{code}}\n\nCheck for memory leaks and provide an optimized replacement:" required></textarea>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a href="/prompts" class="btn afe-btn-ghost">Cancel</a>
+                <button type="submit" class="btn afe-btn-primary"><i class="bi bi-check2 me-1"></i>Save Prompt Template</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

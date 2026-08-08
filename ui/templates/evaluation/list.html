@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Model Evaluation & Leaderboard — AI Foundry Enterprise{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade">
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h4 fw-bold mb-1">Evaluation & Leaderboard</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Standardized LLM reasoning, code generation, and STEM benchmark scorecards.</p>
+        </div>
+        <a href="/evaluation/new" class="btn afe-btn-primary"><i class="bi bi-play-fill me-1"></i>Run Benchmark</a>
+    </div>
+
+    <!-- Leaderboard Table -->
+    <div class="afe-card">
+        <table class="afe-table">
+            <thead>
+                <tr>
+                    <th>Benchmark Suite</th>
+                    <th>Overall Score</th>
+                    <th>Pass@1 / Accuracy</th>
+                    <th>Average Latency</th>
+                    <th>Throughput</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in evaluations %}
+                <tr>
+                    <td>
+                        <div class="fw-semibold text-light mb-1">
+                            <i class="bi bi-trophy me-2 text-warning"></i>{{ e.benchmark_name }}
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            {% for cat, cat_score in e.detailed.items() %}
+                                <span class="small text-secondary">{{ cat }}: <strong class="text-accent">{{ cat_score }}%</strong></span>
+                            {% endfor %}
+                        </div>
+                    </td>
+                    <td>
+                        <span class="h5 fw-bold text-success mb-0">{{ e.score }}%</span>
+                    </td>
+                    <td>
+                        {% if e.pass_at_1 %}
+                            <span class="afe-badge afe-badge-info">{{ (e.pass_at_1 * 100) | round(1) }}%</span>
+                        {% else %}
+                            <span class="text-secondary">—</span>
+                        {% endif %}
+                    </td>
+                    <td><span class="font-monospace">{{ e.avg_latency_ms }} ms</span></td>
+                    <td>{{ e.tokens_per_sec }} tok/s</td>
+                    <td><span class="afe-badge afe-badge-success"><i class="bi bi-check2"></i> Completed</span></td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center text-secondary py-5">
+                        <i class="bi bi-trophy d-block mb-2" style="font-size: 2rem;"></i>
+                        No evaluations recorded yet. Click <strong>Run Benchmark</strong> to evaluate a checkpoint.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,4 @@
+{"text": "AI Foundry Enterprise provides high throughput foundation model training.", "_cleaned_len": 73, "_quality_score": 0.738}
+{"text": "Hybrid transformer state space models scale to ultra long context windows.", "_cleaned_len": 74, "_quality_score": 0.829}
+{"text": "Mixture of experts routes tokens across specialized sub-networks.", "_cleaned_len": 65, "_quality_score": 0.833}
+{"text": "Grouped query attention reduces memory consumption during inference.", "_cleaned_len": 68, "_quality_score": 0.737}

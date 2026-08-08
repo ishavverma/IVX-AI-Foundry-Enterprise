@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}User Administration - AI Foundry Enterprise{% endblock %}
+{% block content %}
+<div class="container-fluid py-4 px-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <p class="text-uppercase text-secondary small mb-1">Enterprise control plane</p>
+            <h1 class="h4 fw-bold mb-1">User administration</h1>
+            <p class="text-secondary mb-0">Provision and govern access to this private Model Factory.</p>
+        </div>
+        <button class="btn afe-btn-primary" data-bs-toggle="modal" data-bs-target="#provisionUser">
+            <i class="bi bi-person-plus me-2"></i>Provision user
+        </button>
+    </div>
+
+    <div class="afe-card mb-3">
+        <form class="row g-2" method="get">
+            <div class="col-md-6">
+                <input class="form-control" name="q" value="{{ search }}" placeholder="Search username or email">
+            </div>
+            <div class="col-auto"><button class="btn afe-btn-ghost" type="submit"><i class="bi bi-search me-1"></i>Search</button></div>
+        </form>
+    </div>
+
+    <div class="afe-card p-0 overflow-hidden">
+        <div class="table-responsive">
+            <table class="afe-table mb-0">
+                <thead><tr><th>User</th><th>Role</th><th>Status</th><th>Created</th><th class="text-end">Action</th></tr></thead>
+                <tbody>
+                {% for row in users %}
+                <tr>
+                    <td><strong>{{ row.user.display_name or row.user.username }}</strong><small class="d-block text-secondary">{{ row.user.email }}</small></td>
+                    <td>{% for role in row.roles %}<span class="afe-badge afe-badge-primary me-1">{{ role }}</span>{% else %}<span class="text-secondary">Unassigned</span>{% endfor %}</td>
+                    <td>{% if row.user.is_active %}<span class="afe-badge afe-badge-success">Active</span>{% else %}<span class="afe-badge afe-badge-danger">Deactivated</span>{% endif %}</td>
+                    <td class="text-secondary">{{ row.user.created_at.strftime('%Y-%m-%d') }}</td>
+                    <td class="text-end">{% if row.user.is_active and row.user.id != current_user.get_id() %}<form method="post" action="{{ url_for('admin.deactivate_user', user_id=row.user.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-danger" type="submit">Deactivate</button></form>{% endif %}</td>
+                </tr>
+                {% else %}<tr><td colspan="5" class="text-center text-secondary py-5">No provisioned users found.</td></tr>{% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="provisionUser" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content afe-card">
+    <form method="post" action="{{ url_for('admin.create_user') }}">
+      <div class="modal-header border-0"><h2 class="h5 mb-0">Provision user</h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="form-label">Username</label><input class="form-control mb-3" name="username" minlength="3" required>
+        <label class="form-label">Work email</label><input class="form-control mb-3" type="email" name="email" required>
+        <label class="form-label">Temporary password</label><input class="form-control mb-3" type="password" name="password" minlength="12" required>
+        <label class="form-label">Role</label><select class="form-select" name="role">{% for role in roles %}<option value="{{ role.name }}">{{ role.name|capitalize }}</option>{% endfor %}</select>
+      </div>
+      <div class="modal-footer border-0"><button class="btn afe-btn-primary" type="submit">Create account</button></div>
+    </form>
+  </div></div>
+</div>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Train Tokenizer — AI Foundry Enterprise{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade" style="max-width: 800px; margin: 0 auto;">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h4 fw-bold mb-1">Train Tokenizer</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Construct a specialized token vocabulary tailored to your model's domain.</p>
+        </div>
+        <a href="/tokenizer" class="btn afe-btn-ghost"><i class="bi bi-arrow-left me-1"></i>Back</a>
+    </div>
+
+    <div class="afe-card">
+        <form method="POST" action="/tokenizer/new">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label class="form-label small fw-bold">Tokenizer Name</label>
+                <input type="text" name="name" class="form-control" placeholder="e.g. Enterprise Hybrid 32K BPE" required>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">Algorithm</label>
+                    <select name="algorithm" class="form-select">
+                        <option value="bpe">Byte-Pair Encoding (BPE)</option>
+                        <option value="byte_level">Byte-Level BPE (GPT-4 / LLaMA style)</option>
+                        <option value="unigram">SentencePiece Unigram</option>
+                        <option value="wordpiece">WordPiece (BERT style)</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-bold">Target Vocabulary Size</label>
+                    <input type="number" name="vocab_size" class="form-control" value="8000" min="256" max="128000">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label small fw-bold">Training Data Source (Dataset)</label>
+                <select name="dataset_id" class="form-select">
+                    <option value="">-- Use Default Curated Corpus Sample --</option>
+                    {% for d in datasets %}
+                    <option value="{{ d.id }}">{{ d.name }}</option>
+                    {% endfor %}
+                </select>
+                <div class="form-text text-secondary">Select an existing prepared dataset or leave blank to train on our pretraining corpus.</div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label small fw-bold">Or Supply Custom Training Text (Optional)</label>
+                <textarea name="training_text" class="form-control font-monospace" rows="4" placeholder="Paste custom domain text here to extract vocabulary merges…"></textarea>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a href="/tokenizer" class="btn afe-btn-ghost">Cancel</a>
+                <button type="submit" class="btn afe-btn-primary"><i class="bi bi-cpu me-1"></i>Train Tokenizer</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

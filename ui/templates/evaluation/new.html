@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Run Benchmark — AI Foundry Enterprise{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade" style="max-width: 800px; margin: 0 auto;">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h4 fw-bold mb-1">Run Evaluation Benchmark</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Assess model capability against standardized academic benchmarks.</p>
+        </div>
+        <a href="/evaluation" class="btn afe-btn-ghost"><i class="bi bi-arrow-left me-1"></i>Back</a>
+    </div>
+
+    <div class="afe-card">
+        <form method="POST" action="/evaluation/new">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label class="form-label small fw-bold">Benchmark Suite</label>
+                <select name="benchmark_name" class="form-select">
+                    <option value="mmlu" selected>MMLU (Massive Multitask Language Understanding — 57 subjects)</option>
+                    <option value="humaneval">HumanEval (Python Code Generation Pass@1)</option>
+                    <option value="gsm8k">GSM8K (Grade School Multi-Step Math)</option>
+                    <option value="math">MATH (Advanced Competition Mathematics)</option>
+                    <option value="latency">Hardware Latency & Memory Throughput Profiling</option>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label small fw-bold">Target Foundation Model</label>
+                <select name="model_id" class="form-select">
+                    {% for m in models %}
+                    <option value="{{ m.id }}">{{ m.name }}</option>
+                    {% else %}
+                    <option value="">-- No models registered --</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a href="/evaluation" class="btn afe-btn-ghost">Cancel</a>
+                <button type="submit" class="btn afe-btn-primary"><i class="bi bi-play-fill me-1"></i>Start Benchmark</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

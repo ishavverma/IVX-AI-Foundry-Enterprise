@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — AI Foundry Enterprise{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade">
+    <!-- Page header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <p class="text-uppercase text-secondary small mb-1">Enterprise Model Factory</p>
+            <h1 class="h4 fw-bold mb-1">Control center</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Monitor model definitions, experiments, resources, and governed production activity.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn afe-btn-ghost"><i class="bi bi-download me-1"></i>Export</button>
+            <button class="btn afe-btn-primary"><i class="bi bi-plus-lg me-1"></i>New Project</button>
+        </div>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="afe-stat-card">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div>
+                        <div class="afe-stat-value">{{ stats.projects }}</div>
+                        <div class="afe-stat-label">Projects</div>
+                    </div>
+                    <div class="afe-stat-icon"><i class="bi bi-folder2"></i></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="afe-stat-card">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div>
+                        <div class="afe-stat-value">{{ stats.models }}</div>
+                        <div class="afe-stat-label">Models</div>
+                    </div>
+                    <div class="afe-stat-icon"><i class="bi bi-boxes"></i></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="afe-stat-card">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div>
+                        <div class="afe-stat-value">{{ stats.datasets }}</div>
+                        <div class="afe-stat-label">Datasets</div>
+                    </div>
+                    <div class="afe-stat-icon"><i class="bi bi-database"></i></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="afe-stat-card">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div>
+                        <div class="afe-stat-value">{{ stats.active_jobs }}</div>
+                        <div class="afe-stat-label">Active Jobs</div>
+                    </div>
+                    <div class="afe-stat-icon"><i class="bi bi-lightning-charge"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <!-- Recent activity -->
+        <div class="col-12 col-lg-8">
+            <div class="afe-card">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h2 class="h6 fw-bold mb-0">Recent Activity</h2>
+                    <a href="/jobs" class="text-decoration-none" style="font-size: 0.8rem; color: var(--afe-primary-light);">View all →</a>
+                </div>
+                <table class="afe-table">
+                    <thead>
+                        <tr>
+                            <th>Job</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Progress</th>
+                            <th>Duration</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for job in recent_jobs %}
+                        <tr>
+                            <td class="fw-medium">{{ job.name }}</td>
+                            <td><span class="afe-badge afe-badge-primary">{{ job.job_type }}</span></td>
+                            <td>
+                                {% if job.status == 'completed' %}
+                                    <span class="afe-badge afe-badge-success"><i class="bi bi-check-circle-fill"></i> Done</span>
+                                {% elif job.status == 'running' %}
+                                    <span class="afe-badge afe-badge-info"><i class="bi bi-play-fill"></i> Running</span>
+                                {% elif job.status == 'failed' %}
+                                    <span class="afe-badge afe-badge-danger"><i class="bi bi-x-circle-fill"></i> Failed</span>
+                                {% else %}
+                                    <span class="afe-badge afe-badge-warning"><i class="bi bi-hourglass-split"></i> {{ job.status | capitalize }}</span>
+                                {% endif %}
+                            </td>
+                            <td style="width: 140px;">
+                                <div class="afe-progress">
+                                    <div class="afe-progress-bar" style="width: {{ (job.progress * 100) | int }}%"></div>
+                                </div>
+                            </td>
+                            <td class="text-secondary" style="font-size: 0.8rem;">
+                                {% if job.duration_seconds %}{{ job.duration_seconds | int }}s{% else %}—{% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-secondary py-4">
+                                <i class="bi bi-inbox d-block mb-2" style="font-size: 1.5rem;"></i>
+                                No jobs yet. Start a training run or evaluation to see activity here.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- System status -->
+        <div class="col-12 col-lg-4">
+            <div class="afe-card mb-3">
+                <h2 class="h6 fw-bold mb-3">System Resources</h2>
+                {% for res in system_resources %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span style="font-size: 0.8rem; color: var(--afe-text-secondary);">
+                            <i class="bi {{ res.icon }} me-1"></i>{{ res.label }}
+                        </span>
+                        <span style="font-size: 0.8rem; font-weight: 600;">{{ res.value }}</span>
+                    </div>
+                    <div class="afe-progress">
+                        <div class="afe-progress-bar" style="width: {{ res.percent }}%"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="afe-card">
+                <h2 class="h6 fw-bold mb-3">Quick Actions</h2>
+                <div class="d-grid gap-2">
+                    <a href="/models/new" class="btn afe-btn-ghost text-start"><i class="bi bi-boxes me-2"></i>Define architecture</a>
+                    <a href="/datasets" class="btn afe-btn-ghost text-start"><i class="bi bi-database me-2"></i>Import Dataset</a>
+                    <a href="/training" class="btn afe-btn-ghost text-start"><i class="bi bi-lightning-charge me-2"></i>Start Training</a>
+                    <a href="/chat" class="btn afe-btn-ghost text-start"><i class="bi bi-chat-dots me-2"></i>Open Chat</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

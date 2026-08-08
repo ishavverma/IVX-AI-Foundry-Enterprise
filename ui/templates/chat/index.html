@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Chat Studio — AI Foundry Enterprise{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade" x-data="chatStudio('{{ active_session.id }}')">
+    <div class="row g-3" style="height: calc(100vh - 120px);">
+        <!-- Sidebar: Conversation Sessions -->
+        <div class="col-md-4 col-lg-3 d-flex flex-column" style="height: 100%;">
+            <div class="afe-card d-flex flex-column h-100 p-3">
+                <form method="POST" action="/chat/new_session" class="mb-3">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn afe-btn-primary w-100"><i class="bi bi-plus-lg me-1"></i>New Conversation</button>
+                </form>
+                <div class="small fw-bold text-secondary mb-2">Recent Chats</div>
+                <div class="flex-grow-1 overflow-auto">
+                    {% for s in sessions %}
+                    <a href="/chat/?session_id={{ s.id }}" class="d-block p-2 rounded mb-1 text-decoration-none {% if s.id == active_session.id %}text-accent fw-bold{% else %}text-secondary{% endif %}" style="background: {% if s.id == active_session.id %}var(--afe-bg-elevated){% else %}transparent{% endif %}; font-size: 0.85rem;">
+                        <i class="bi bi-chat-dots me-2"></i>{{ s.title }}
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Workspace Area -->
+        <div class="col-md-8 col-lg-9 d-flex flex-column" style="height: 100%;">
+            <div class="afe-card d-flex flex-column h-100 p-0 overflow-hidden">
+                <!-- Top Toolbar -->
+                <div class="p-3 border-bottom border-secondary-subtle d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="fw-bold">{{ active_session.title }}</span>
+                        <span class="afe-badge afe-badge-info">{{ active_session.model_name }}</span>
+                    </div>
+                    <span class="small text-secondary"><i class="bi bi-cpu me-1"></i>Zero-KV Linear Scaling</span>
+                </div>
+
+                <!-- Message stream box -->
+                <div class="flex-grow-1 p-4 overflow-auto d-flex flex-column gap-3" id="messagesContainer">
+                    {% for m in messages %}
+                    <div class="d-flex {% if m.role == 'user' %}justify-content-end{% else %}justify-content-start{% endif %}">
+                        <div class="p-3 rounded" style="max-width: 80%; background: {% if m.role == 'user' %}var(--afe-primary){% else %}var(--afe-bg-elevated){% endif %}; border: 1px solid var(--afe-border);">
+                            <div class="small text-secondary mb-1 fw-bold">{% if m.role == 'user' %}You{% else %}AFE Assistant{% endif %}</div>
+                            <div style="font-size: 0.9rem; line-height: 1.5; white-space: pre-wrap;">{{ m.content }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    <template x-for="m in dynamicMessages" :key="m.id">
+                        <div class="d-flex" :class="m.role === 'user' ? 'justify-content-end' : 'justify-content-start'">
+                            <div class="p-3 rounded" :style="m.role === 'user' ? 'background: var(--afe-primary);' : 'background: var(--afe-bg-elevated); border: 1px solid var(--afe-border);'" style="max-width: 80%;">
+                                <div class="small text-secondary mb-1 fw-bold" x-text="m.role === 'user' ? 'You' : 'AFE Assistant'"></div>
+                                <div style="font-size: 0.9rem; line-height: 1.5; white-space: pre-wrap;" x-text="m.content"></div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Input Composer -->
+                <div class="p-3 border-top border-secondary-subtle">
+                    <form @submit.prevent="sendMessage" class="d-flex gap-2">
+                        <input type="text" x-model="inputText" class="form-control" placeholder="Ask anything about foundation model architectures, pretraining, or write code…" required>
+                        <button type="submit" class="btn afe-btn-primary px-4"><i class="bi bi-send-fill"></i></button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+function chatStudio(sessionId) {
+    return {
+        inputText: "",
+        dynamicMessages: [],
+        async sendMessage() {
+            if (!this.inputText.trim()) return;
+            const userText = this.inputText;
+            this.inputText = "";
+            this.dynamicMessages.push({id: Date.now(), role: "user", content: userText});
+            
+            try {
+                const res = await fetch('/chat/send', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({session_id: sessionId, message: userText})
+                });
+                const data = await res.json();
+                this.dynamicMessages.push({id: Date.now() + 1, role: "assistant", content: data.content});
+                this.$nextTick(() => {
+                    const c = document.getElementById("messagesContainer");
+                    if (c) c.scrollTop = c.scrollHeight;
+                });
+            } catch (err) {
+                console.error("Chat error:", err);
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

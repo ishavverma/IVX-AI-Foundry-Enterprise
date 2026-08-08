@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}{{ tokenizer.name }} — Tokenizer Studio{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade">
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <h1 class="h4 fw-bold mb-0">{{ tokenizer.name }}</h1>
+                <span class="afe-badge afe-badge-info">{{ tokenizer.algorithm | upper }}</span>
+                <span class="afe-badge afe-badge-success"><i class="bi bi-check2"></i> Ready</span>
+            </div>
+            <p class="text-secondary mb-0 small">Vocabulary size: {{ tokenizer.vocab_size }} tokens &bull; {{ tokenizer.merges_count }} merges recorded.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="/tokenizer/{{ tokenizer.id }}/export/huggingface" class="btn afe-btn-ghost"><i class="bi bi-download me-1"></i>HuggingFace JSON</a>
+            <a href="/tokenizer/{{ tokenizer.id }}/export/gguf" class="btn afe-btn-ghost"><i class="bi bi-file-earmark-code me-1"></i>GGUF Meta</a>
+            <a href="/tokenizer" class="btn afe-btn-ghost"><i class="bi bi-arrow-left me-1"></i>All Tokenizers</a>
+        </div>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+            <div class="afe-stat-card">
+                <div class="afe-stat-value">{{ tokenizer.vocab_size }}</div>
+                <div class="afe-stat-label">Total Vocabulary</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="afe-stat-card">
+                <div class="afe-stat-value text-success">{{ tokenizer.compression_ratio or '3.8' }} <small style="font-size: 1rem;">B/tok</small></div>
+                <div class="afe-stat-label">Compression Ratio</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="afe-stat-card">
+                <div class="afe-stat-value">{{ tokenizer.cjk_coverage_pct or '100' }}%</div>
+                <div class="afe-stat-label">Unicode / CJK Coverage</div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="afe-stat-card">
+                <div class="afe-stat-value">{{ tokenizer.merges_count }}</div>
+                <div class="afe-stat-label">Learned BPE Merges</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <!-- Interactive live tokenization visualizer -->
+        <div class="col-lg-7">
+            <div class="afe-card mb-4" x-data="tokenTester('{{ tokenizer.id }}')">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h2 class="h6 fw-bold mb-0"><i class="bi bi-braces me-2 text-primary"></i>Interactive Token Visualizer</h2>
+                    <span class="small text-secondary" x-text="metricsText"></span>
+                </div>
+
+                <div class="mb-3">
+                    <textarea 
+                        x-model="inputPrompt" 
+                        @input.debounce.300ms="testTokenize"
+                        class="form-control font-monospace" 
+                        rows="3" 
+                        placeholder="Type any text, code, or math formula to inspect live token spans…"></textarea>
+                </div>
+
+                <!-- Colored token output box -->
+                <div class="p-3 rounded mb-3" style="background: var(--afe-bg-elevated); border: 1px solid var(--afe-border); min-height: 80px;">
+                    <template x-if="spans.length === 0">
+                        <span class="text-secondary small">Live colored token pieces will appear here…</span>
+                    </template>
+                    <div class="d-flex flex-wrap gap-1">
+                        <template x-for="s in spans" :key="s.index">
+                            <span 
+                                class="px-2 py-1 rounded font-monospace small" 
+                                :style="'background: ' + s.color + '; border: 1px solid rgba(255,255,255,0.1);'"
+                                :title="'ID: ' + s.id"
+                                x-text="s.token">
+                            </span>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Token ID stream -->
+                <div class="small">
+                    <div class="text-secondary mb-1">Token ID Sequence:</div>
+                    <code class="d-block p-2 rounded text-truncate" style="background: var(--afe-bg-card); border: 1px solid var(--afe-border);" x-text="tokenIdsString"></code>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sample vocabulary list -->
+        <div class="col-lg-5">
+            <div class="afe-card">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h2 class="h6 fw-bold mb-0"><i class="bi bi-list-ul me-2 text-accent"></i>Vocabulary Snippet</h2>
+                    <span class="small text-secondary">First 60 tokens</span>
+                </div>
+
+                <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+                    <table class="afe-table">
+                        <thead>
+                            <tr>
+                                <th>Token ID</th>
+                                <th>Symbol Piece</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sym, tid in tokenizer.sample_vocab %}
+                            <tr>
+                                <td class="font-monospace text-secondary small">{{ tid }}</td>
+                                <td class="font-monospace fw-bold small text-info">{{ sym }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+function tokenTester(tokenizerId) {
+    return {
+        inputPrompt: "AI Foundry Enterprise delivers high-performance hybrid foundation models with 256K context windows.",
+        spans: [],
+        tokenIds: [],
+        metricsText: "Ready",
+        get tokenIdsString() {
+            return this.tokenIds.length ? `[${this.tokenIds.join(', ')}]` : "[]";
+        },
+        init() {
+            this.testTokenize();
+        },
+        async testTokenize() {
+            if (!this.inputPrompt.trim()) {
+                this.spans = [];
+                this.tokenIds = [];
+                this.metricsText = "0 tokens";
+                return;
+            }
+            try {
+                const res = await fetch(`/tokenizer/${tokenizerId}/tokenize`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({text: this.inputPrompt})
+                });
+                const data = await res.json();
+                this.spans = data.spans || [];
+                this.tokenIds = data.token_ids || [];
+                this.metricsText = `${data.token_count} tokens • ${data.bytes_per_token} B/tok`;
+            } catch (err) {
+                console.error("Tokenization error:", err);
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

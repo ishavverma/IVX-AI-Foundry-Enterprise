@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}System Observability — AI Foundry Enterprise{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade">
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h4 fw-bold mb-1">System Telemetry & Observability</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Live cluster compute, memory bandwidth, GPU temperature limits, and task queue states.</p>
+        </div>
+    </div>
+
+    <!-- Cluster Gauges -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+            <div class="afe-stat-card">
+                <div class="afe-stat-value">{{ snapshot.cpu.usage_percent }}%</div>
+                <div class="afe-stat-label">CPU Load ({{ snapshot.cpu.logical_cores }} cores)</div>
+                <div class="afe-progress mt-2">
+                    <div class="afe-progress-bar" style="width: {{ snapshot.cpu.usage_percent }}%;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="afe-stat-card">
+                <div class="afe-stat-value text-accent">{{ snapshot.memory.used_gb }} / {{ snapshot.memory.total_gb }} GB</div>
+                <div class="afe-stat-label">System RAM ({{ snapshot.memory.usage_percent }}%)</div>
+                <div class="afe-progress mt-2">
+                    <div class="afe-progress-bar" style="width: {{ snapshot.memory.usage_percent }}%;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="afe-stat-card">
+                <div class="afe-stat-value text-warning">{{ snapshot.disk.used_gb }} / {{ snapshot.disk.total_gb }} GB</div>
+                <div class="afe-stat-label">Storage ({{ snapshot.disk.usage_percent }}%)</div>
+                <div class="afe-progress mt-2">
+                    <div class="afe-progress-bar" style="width: {{ snapshot.disk.usage_percent }}%;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="afe-stat-card">
+                <div class="afe-stat-value text-info">{{ allocation.active_leases }}</div>
+                <div class="afe-stat-label">Active GPU Leases</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Background Tasks -->
+    <div class="afe-card">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h2 class="h6 fw-bold mb-0"><i class="bi bi-clock-history me-2 text-primary"></i>Background Task Queue Execution</h2>
+        </div>
+        <table class="afe-table">
+            <thead>
+                <tr>
+                    <th>Task Name</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Progress</th>
+                    <th>Submitted</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for j in jobs %}
+                <tr>
+                    <td class="fw-semibold text-light">{{ j.name }}</td>
+                    <td><span class="afe-badge afe-badge-info">{{ j.type | upper }}</span></td>
+                    <td>
+                        {% if j.status == 'completed' %}
+                            <span class="afe-badge afe-badge-success"><i class="bi bi-check2"></i> Completed</span>
+                        {% elif j.status == 'running' %}
+                            <span class="afe-badge afe-badge-warning afe-animate-pulse"><i class="bi bi-arrow-repeat"></i> Running</span>
+                        {% else %}
+                            <span class="afe-badge afe-badge-primary">{{ j.status | capitalize }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="afe-progress" style="width: 100px;">
+                            <div class="afe-progress-bar" style="width: {{ j.progress }}%;"></div>
+                        </div>
+                    </td>
+                    <td class="small text-secondary">{{ j.created_at.strftime('%Y-%m-%d %H:%M:%S') if j.created_at else '—' }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center text-secondary py-4">No recent task jobs in worker ledger.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

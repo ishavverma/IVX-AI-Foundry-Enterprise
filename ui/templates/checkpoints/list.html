@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Model Checkpoints — AI Foundry Enterprise{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade">
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h4 fw-bold mb-1">Model Checkpoints & Weights Manager</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Manage safetensors shards, execute post-training quantization (GPTQ / AWQ), and export to GGUF / ONNX.</p>
+        </div>
+    </div>
+
+    <!-- Checkpoints Table -->
+    <div class="afe-card">
+        <table class="afe-table">
+            <thead>
+                <tr>
+                    <th>Checkpoint Name</th>
+                    <th>Step</th>
+                    <th>Loss</th>
+                    <th>Size</th>
+                    <th>Format</th>
+                    <th>Quantization</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in checkpoints %}
+                <tr>
+                    <td class="fw-semibold text-light">
+                        <i class="bi bi-save me-2 text-warning"></i>{{ c.name }}
+                        {% if c.is_best %}<span class="badge bg-success ms-1">BEST</span>{% endif %}
+                    </td>
+                    <td class="font-monospace">{{ c.step }}</td>
+                    <td class="font-monospace text-success">{{ c.loss }}</td>
+                    <td>{{ c.size_mb }} MB</td>
+                    <td><span class="afe-badge afe-badge-info">{{ c.format | upper }}</span></td>
+                    <td><span class="afe-badge afe-badge-primary">{{ c.quantization | upper }}</span></td>
+                    <td>
+                        <div class="d-flex gap-2">
+                            <!-- Quantize trigger -->
+                            <form method="POST" action="/checkpoints/{{ c.id }}/quantize" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="quantization_type" value="int4">
+                                <button type="submit" class="btn btn-sm afe-btn-ghost" title="Quantize to INT4">INT4</button>
+                            </form>
+                            <!-- GGUF export -->
+                            <form method="POST" action="/checkpoints/{{ c.id }}/export/gguf" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm afe-btn-ghost" title="Export to GGUF"><i class="bi bi-file-earmark-code me-1"></i>GGUF</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-secondary py-5">
+                        <i class="bi bi-save d-block mb-2" style="font-size: 2rem;"></i>
+                        No weight checkpoints saved yet. Launch a training or fine-tuning run to produce safetensors artifacts.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

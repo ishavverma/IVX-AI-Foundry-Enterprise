@@ -1,0 +1,21 @@
+/* Model Factory specific styling */
+body {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.model-card {
+  border: 1px solid #e0e0e0;
+  border-radius: .5rem;
+  transition: box-shadow .2s;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background: #fff;
+}
+
+.model-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .1);
+}
+
+.status-draft { background: #ffc107; color: #212529; }
+.status-ready { background: #28a745; color: #fff; }
+.status-training { background: #17a2b8; color: #fff; }

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Asset Registry — AI Foundry Enterprise{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade">
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h4 fw-bold mb-1">Central Asset Registry</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Version-controlled catalog of foundation models, tokenizers, curated datasets, and weight artifacts.</p>
+        </div>
+    </div>
+
+    <!-- Registry Grid -->
+    <div class="row g-3">
+        {% for a in assets %}
+        <div class="col-md-6 col-xl-4">
+            <div class="afe-card h-100 position-relative">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="afe-badge afe-badge-info">{{ a.asset_type | upper }}</span>
+                    <span class="afe-badge afe-badge-primary font-monospace">{{ a.version }}</span>
+                </div>
+                <h2 class="h6 fw-bold text-light mb-1">{{ a.name }}</h2>
+                <p class="text-secondary small mb-3" style="min-height: 38px;">{{ a.description }}</p>
+                <div class="d-flex flex-wrap gap-1 mb-3">
+                    {% for tag in a.tags %}
+                        <span class="afe-badge afe-badge-ghost small" style="font-size: 0.7rem;">#{{ tag.strip() }}</span>
+                    {% endfor %}
+                </div>
+                <div class="d-flex align-items-center justify-content-between pt-2 border-top border-secondary-subtle small">
+                    <span class="text-secondary"><i class="bi bi-shield-check me-1"></i>{{ a.license }}</span>
+                    <code class="text-info text-truncate" style="max-width: 140px;">{{ a.storage_key }}</code>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12 text-center text-secondary py-5">
+            <i class="bi bi-archive d-block mb-2" style="font-size: 2rem;"></i>
+            No assets registered yet.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
