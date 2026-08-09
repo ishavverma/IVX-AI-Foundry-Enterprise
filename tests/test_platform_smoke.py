@@ -9,6 +9,9 @@ def test_public_operational_endpoints() -> None:
     assert client.get("/health").status_code == 200
     assert client.get("/metrics").status_code == 200
     assert client.get("/api/openapi.json").status_code == 200
+    health = client.get("/health")
+    assert health.headers["X-Content-Type-Options"] == "nosniff"
+    assert health.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
 
 
 def test_anonymous_access_and_csrf() -> None:

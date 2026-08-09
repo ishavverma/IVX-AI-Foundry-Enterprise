@@ -6,10 +6,25 @@
     <!-- Header -->
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
+            <p class="text-uppercase small text-secondary mb-1">Quality gates</p>
             <h1 class="h4 fw-bold mb-1">Evaluation & Leaderboard</h1>
-            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Standardized LLM reasoning, code generation, and STEM benchmark scorecards.</p>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Compare capability, latency, and throughput before promoting a model.</p>
         </div>
         <a href="/evaluation/new" class="btn afe-btn-primary"><i class="bi bi-play-fill me-1"></i>Run Benchmark</a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-sm-4"><div class="afe-stat-card"><div class="afe-stat-value">{{ evaluations | length }}</div><div class="afe-stat-label">Benchmark runs</div></div></div>
+        <div class="col-sm-4"><div class="afe-stat-card"><div class="afe-stat-value text-success">{% if evaluations %}{{ (evaluations[0].score or 0) | round(1) }}%{% else %}—{% endif %}</div><div class="afe-stat-label">Top score</div></div></div>
+        <div class="col-sm-4"><div class="afe-stat-card"><div class="afe-stat-value text-info">{% if evaluations %}{{ (evaluations | map(attribute='tokens_per_sec') | sum / evaluations | length) | round(1) }}{% else %}—{% endif %}</div><div class="afe-stat-label">Average tokens / sec</div></div></div>
+    </div>
+
+    <div class="afe-card mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h2 class="h6 fw-bold mb-0"><i class="bi bi-bar-chart-line me-2 text-primary"></i>Capability comparison</h2>
+            <span class="small text-secondary">Score percentage</span>
+        </div>
+        <div class="afe-chart-frame"><canvas id="evaluationChart" height="170" aria-label="Evaluation score comparison"></canvas></div>
     </div>
 
     <!-- Leaderboard Table -->
@@ -64,4 +79,39 @@
         </table>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+(function () {
+    const canvas = document.getElementById('evaluationChart');
+    const context = canvas?.getContext('2d');
+    const evaluations = {{ evaluations | tojson }};
+    if (!context || !evaluations.length) return;
+    const width = canvas.clientWidth || 720;
+    const height = 170;
+    canvas.width = width * window.devicePixelRatio;
+    canvas.height = height * window.devicePixelRatio;
+    context.scale(window.devicePixelRatio, window.devicePixelRatio);
+    const barWidth = Math.max(18, width / evaluations.length - 18);
+    const color = getComputedStyle(document.documentElement).getPropertyValue('--color-primary-500').trim();
+    evaluations.forEach((evaluation, index) => {
+        const value = Math.max(0, Math.min(100, Number(evaluation.score) || 0));
+        const barHeight = value / 100 * (height - 36);
+        const x = index * (width / evaluations.length) + 9;
+        const y = height - barHeight - 20;
+        context.fillStyle = color;
+        context.fillRect(x, y, barWidth, barHeight);
+        context.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim();
+        context.font = '11px Inter, sans-serif';
+        context.fillText(`${value.toFixed(1)}%`, x, y - 5);
+        context.save();
+        context.translate(x + barWidth / 2, height - 4);
+        context.rotate(-0.35);
+        context.textAlign = 'center';
+        context.fillText(evaluation.benchmark_name.slice(0, 18), 0, 0);
+        context.restore();
+    });
+}());
+</script>
 {% endblock %}

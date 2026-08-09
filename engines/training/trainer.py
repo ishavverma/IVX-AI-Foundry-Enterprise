@@ -17,6 +17,7 @@ from dataclasses import dataclass, asdict
 from typing import Dict, List, Optional, Any, Callable
 
 from core.database.engine import get_session
+import json
 from core.database.models.experiment import Experiment, Checkpoint
 from core.database.models.model_def import ModelDefinition
 from core.database.models.dataset import Dataset
@@ -86,6 +87,9 @@ class TrainingEngine:
             "engine": "afe-simulated" if settings.TRAINING_BACKEND != "transformers" else "transformers",
         }
         
+        # -----------------------------------------------------------------
+        # Resolve experiment and associated dataset(s)
+        # -----------------------------------------------------------------
         with get_session() as session:
             exp = session.get(Experiment, experiment_id)
             if not exp:
@@ -93,6 +97,37 @@ class TrainingEngine:
             experiment_owner_id = exp.created_by
             exp.status = "running"
             exp.max_steps = hp.max_steps
+
+            # Determine which dataset(s) to use.  ``experiment.dataset_id`` holds a
+            # single ID for the legacy endpoint.  For the multi‑dataset API we store
+            # a JSON list under ``hyperparameters_json`` with the key ``dataset_ids``.
+            dataset_ids: list[str] = []
+            if exp.dataset_id:
+                dataset_ids = [exp.dataset_id]
+            else:
+                try:
+                    meta = json.loads(exp.hyperparameters_json or "{}")
+                    dataset_ids = meta.get("dataset_ids", [])
+                except Exception:
+                    dataset_ids = []
+
+            # Load dataset metadata (size, storage key) – for the simulated engine we
+            # only log the information.  In a real implementation the data would be
+            # streamed into the training loop.
+            if not dataset_ids:
+                logger.warning("Experiment %s has no associated datasets", experiment_id)
+            else:
+                for ds_id in dataset_ids:
+                    ds = session.get(Dataset, ds_id)
+                    if ds:
+                        logger.info(
+                            "Using dataset %s (size=%s bytes) for experiment %s",
+                            ds_id,
+                            ds.size_bytes,
+                            experiment_id,
+                        )
+                    else:
+                        logger.warning("Dataset %s not found for experiment %s", ds_id, experiment_id)
 
         metrics_history: List[Dict[str, Any]] = []
         best_loss = 999.0
@@ -173,6 +208,20 @@ class TrainingEngine:
                 exp.tokens_per_second = tok_sec
                 exp.metrics_history_json = json.dumps(metrics_history)
 
+        # Record GPU usage for the organization (if any)
+        if experiment_owner_id:
+            organization_id = TenantService.organization_for_user(experiment_owner_id)
+            if organization_id:
+                gpu_hours = max(0.1, (time.time() - start_time) / 3600)
+                TenantService.record(
+                    organization_id,
+                    "gpu_hours",
+                    gpu_hours,
+                    "hours",
+                    experiment_id,
+                    {"backend": reproducibility["engine"], "steps": hp.max_steps},
+                )
+
         result_summary = {
             "experiment_id": experiment_id,
             "final_step": hp.max_steps,
@@ -180,17 +229,6 @@ class TrainingEngine:
             "total_tokens": total_tokens,
             "tokens_per_sec": tok_sec,
         }
-        if experiment_owner_id:
-            organization_id = TenantService.organization_for_user(experiment_owner_id)
-            if organization_id:
-                TenantService.record(
-                    organization_id,
-                    "gpu_hours",
-                    max(0.1, (time.time() - start_time) / 3600),
-                    "hours",
-                    experiment_id,
-                    {"backend": reproducibility["engine"], "steps": hp.max_steps},
-                )
         event_bus.emit("training.completed", result_summary)
         return result_summary
 

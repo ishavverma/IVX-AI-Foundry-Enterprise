@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, url_for, jsonify
 from flask_login import current_user
 
 from core.database.engine import get_session
@@ -80,6 +80,24 @@ def list_evaluations():
             })
 
     return render_template("evaluation/list.html", evaluations=eval_list)
+
+
+@evaluation_bp.route("/api/compare")
+def compare_evaluations():
+    """Return benchmark scores for the evaluation comparison visualizer."""
+    with get_session() as session:
+        evaluations = TenantService.scope(
+            session.query(EvaluationRun), EvaluationRun, session
+        ).order_by(EvaluationRun.score.desc()).all()
+        return jsonify([
+            {
+                "benchmark": evaluation.benchmark_name,
+                "score": evaluation.score or 0,
+                "latency_ms": evaluation.avg_latency_ms or 0,
+                "tokens_per_sec": evaluation.tokens_per_sec or 0,
+            }
+            for evaluation in evaluations
+        ])
 
 
 @evaluation_bp.route("/new", methods=["GET", "POST"])

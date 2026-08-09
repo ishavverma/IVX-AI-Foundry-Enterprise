@@ -12,8 +12,7 @@
     </div>
 
     <div class="afe-card">
-        <form method="POST" action="/tokenizer/new">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% call components.form(method='post', action='/tokenizer/new', aria_label='Train tokenizer') %}
             <div class="mb-3">
                 <label class="form-label small fw-bold">Tokenizer Name</label>
                 <input type="text" name="name" class="form-control" placeholder="e.g. Enterprise Hybrid 32K BPE" required>
@@ -55,7 +54,7 @@
                 <a href="/tokenizer" class="btn afe-btn-ghost">Cancel</a>
                 <button type="submit" class="btn afe-btn-primary"><i class="bi bi-cpu me-1"></i>Train Tokenizer</button>
             </div>
-        </form>
+        {% endcall %}
     </div>
 </div>
 {% endblock %}

@@ -62,15 +62,42 @@ def index():
 def new_session():
     """Create a new conversational chat thread."""
     with get_session() as session:
+        title = request.form.get("title", "").strip() or "New Conversation"
+        model_name = request.form.get("model_name", "AFE-Base-7B Hybrid").strip()
+        system_prompt = request.form.get("system_prompt", "You are AFE, a high-performance foundation model assistant.").strip()
+        
         s = ConversationSession(
-            title=request.form.get("title", "New Conversation"),
-            model_name=request.form.get("model_name", "afe-hybrid-7b"),
+            title=title,
+            model_name=model_name,
+            system_prompt=system_prompt,
             created_by=current_user.get_id(),
             user_id=current_user.get_id(),
         )
         session.add(s)
-        session.commit()
+        session.flush()
         return redirect(url_for("chat.index", session_id=s.id))
+
+
+@chat_bp.route("/delete/<session_id>", methods=["POST"])
+def delete_session(session_id: str):
+    """Delete a conversation session and all its messages."""
+    with get_session() as session:
+        sess = TenantService.scope(session.query(ConversationSession).filter(ConversationSession.id == session_id), ConversationSession, session).first()
+        if sess:
+            session.query(ChatMessage).filter(ChatMessage.session_id == session_id).delete()
+            session.delete(sess)
+    return redirect(url_for("chat.index"))
+
+
+@chat_bp.route("/clear/<session_id>", methods=["POST"])
+def clear_session(session_id: str):
+    """Clear all chat messages for a specific session."""
+    with get_session() as session:
+        sess = TenantService.scope(session.query(ConversationSession).filter(ConversationSession.id == session_id), ConversationSession, session).first()
+        if sess:
+            session.query(ChatMessage).filter(ChatMessage.session_id == session_id).delete()
+            sess.total_tokens = 0
+    return redirect(url_for("chat.index", session_id=session_id))
 
 
 @chat_bp.route("/send", methods=["POST"])
@@ -87,20 +114,43 @@ def send_message():
         owned_session = TenantService.scope(session.query(ConversationSession).filter(ConversationSession.id == session_id), ConversationSession, session).first()
         if not owned_session:
             return jsonify({"error": "Conversation not found"}), 404
+
         # Save user message
-        u_msg = ChatMessage(session_id=session_id, role="user", content=user_text, tokens=len(user_text.split()))
+        u_tokens = len(user_text.split())
+        u_msg = ChatMessage(session_id=session_id, role="user", content=user_text, tokens=u_tokens)
         session.add(u_msg)
 
+        # Build message context
+        messages_payload = []
+        if owned_session.system_prompt:
+            messages_payload.append({"role": "system", "content": owned_session.system_prompt})
+
+        prior_messages = (
+            session.query(ChatMessage)
+            .filter(ChatMessage.session_id == session_id)
+            .order_by(ChatMessage.created_at.asc())
+            .all()
+        )
+        for msg in prior_messages:
+            messages_payload.append({"role": msg.role, "content": msg.content})
+        messages_payload.append({"role": "user", "content": user_text})
+
         # Generate response
-        resp = InferenceServer.generate_complete(messages=[{"role": "user", "content": user_text}])
+        resp = InferenceServer.generate_complete(
+            messages=messages_payload,
+            temperature=owned_session.temperature or 0.7,
+            model_name=owned_session.model_name or "afe-hybrid-7b",
+        )
         assistant_content = resp["choices"][0]["message"]["content"]
+        a_tokens = resp.get("usage", {}).get("completion_tokens", len(assistant_content.split()))
         
-        a_msg = ChatMessage(session_id=session_id, role="assistant", content=assistant_content, tokens=len(assistant_content.split()))
+        a_msg = ChatMessage(session_id=session_id, role="assistant", content=assistant_content, tokens=a_tokens)
         session.add(a_msg)
-        session.commit()
+
+        owned_session.total_tokens = (owned_session.total_tokens or 0) + u_tokens + a_tokens
 
     return jsonify({
         "role": "assistant",
         "content": assistant_content,
-        "tokens": a_msg.tokens,
+        "tokens": a_tokens,
     })

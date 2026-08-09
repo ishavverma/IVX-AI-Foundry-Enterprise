@@ -15,28 +15,28 @@
     <div class="row g-3 mb-4">
         <div class="col-sm-6 col-xl-3">
             <div class="afe-stat-card">
-                <div class="afe-stat-value">{{ snapshot.cpu.usage_percent }}%</div>
+                <div class="afe-stat-value" id="cpuValue">{{ snapshot.cpu.usage_percent }}%</div>
                 <div class="afe-stat-label">CPU Load ({{ snapshot.cpu.logical_cores }} cores)</div>
                 <div class="afe-progress mt-2">
-                    <div class="afe-progress-bar" style="width: {{ snapshot.cpu.usage_percent }}%;"></div>
+                    <div class="afe-progress-bar" id="cpuBar" style="width: {{ snapshot.cpu.usage_percent }}%;"></div>
                 </div>
             </div>
         </div>
         <div class="col-sm-6 col-xl-3">
             <div class="afe-stat-card">
-                <div class="afe-stat-value text-accent">{{ snapshot.memory.used_gb }} / {{ snapshot.memory.total_gb }} GB</div>
+                <div class="afe-stat-value text-accent" id="ramValue">{{ snapshot.memory.used_gb }} / {{ snapshot.memory.total_gb }} GB</div>
                 <div class="afe-stat-label">System RAM ({{ snapshot.memory.usage_percent }}%)</div>
                 <div class="afe-progress mt-2">
-                    <div class="afe-progress-bar" style="width: {{ snapshot.memory.usage_percent }}%;"></div>
+                    <div class="afe-progress-bar" id="ramBar" style="width: {{ snapshot.memory.usage_percent }}%;"></div>
                 </div>
             </div>
         </div>
         <div class="col-sm-6 col-xl-3">
             <div class="afe-stat-card">
-                <div class="afe-stat-value text-warning">{{ snapshot.disk.used_gb }} / {{ snapshot.disk.total_gb }} GB</div>
+                <div class="afe-stat-value text-warning" id="diskValue">{{ snapshot.disk.used_gb }} / {{ snapshot.disk.total_gb }} GB</div>
                 <div class="afe-stat-label">Storage ({{ snapshot.disk.usage_percent }}%)</div>
                 <div class="afe-progress mt-2">
-                    <div class="afe-progress-bar" style="width: {{ snapshot.disk.usage_percent }}%;"></div>
+                    <div class="afe-progress-bar" id="diskBar" style="width: {{ snapshot.disk.usage_percent }}%;"></div>
                 </div>
             </div>
         </div>
@@ -46,6 +46,14 @@
                 <div class="afe-stat-label">Active GPU Leases</div>
             </div>
         </div>
+    </div>
+
+    <div class="afe-card mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h2 class="h6 fw-bold mb-0"><i class="bi bi-activity me-2 text-info"></i>Live Resource Stream</h2>
+            <span class="afe-badge afe-badge-success" id="telemetryStatus"><i class="bi bi-broadcast"></i> Polling</span>
+        </div>
+        <div class="afe-chart-frame"><canvas id="resourceChart" height="150" aria-label="Live CPU and RAM telemetry"></canvas></div>
     </div>
 
     <!-- Recent Background Tasks -->
@@ -93,4 +101,54 @@
         </table>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+(function () {
+    const canvas = document.getElementById('resourceChart');
+    const context = canvas?.getContext('2d');
+    const points = {cpu: [], ram: []};
+    const colors = {cpu: '#38bdf8', ram: '#818cf8'};
+
+    function draw() {
+        if (!context) return;
+        const width = canvas.clientWidth || 640;
+        const height = 150;
+        canvas.width = width * window.devicePixelRatio;
+        canvas.height = height * window.devicePixelRatio;
+        context.scale(window.devicePixelRatio, window.devicePixelRatio);
+        context.clearRect(0, 0, width, height);
+        Object.entries(points).forEach(([key, values]) => {
+            if (!values.length) return;
+            context.strokeStyle = colors[key];
+            context.lineWidth = 2;
+            context.beginPath();
+            values.forEach((value, index) => {
+                const x = values.length === 1 ? width / 2 : index * width / (values.length - 1);
+                const y = height - (value / 100) * (height - 12) - 6;
+                index ? context.lineTo(x, y) : context.moveTo(x, y);
+            });
+            context.stroke();
+        });
+    }
+
+    function update(data) {
+        const cpu = Number(data.cpu_percent || 0);
+        const ram = Number(data.ram_percent || 0);
+        points.cpu.push(cpu); points.ram.push(ram);
+        points.cpu = points.cpu.slice(-30); points.ram = points.ram.slice(-30);
+        document.getElementById('cpuValue').textContent = `${cpu.toFixed(1)}%`;
+        document.getElementById('cpuBar').style.width = `${cpu}%`;
+        document.getElementById('ramBar').style.width = `${ram}%`;
+        document.getElementById('diskBar').style.width = `${Number(data.disk_percent || 0)}%`;
+        draw();
+    }
+
+    fetch('/monitoring/api/live').then(response => response.json()).then(update).catch(() => {});
+    setInterval(() => fetch('/monitoring/api/live').then(response => response.json()).then(update).catch(() => {
+        document.getElementById('telemetryStatus').textContent = 'Offline';
+    }), 5000);
+}());
+</script>
 {% endblock %}

@@ -1,0 +1,189 @@
+{#
+Component macro library for UI redesign Phase 1.
+Provides reusable Jinja macros for common UI elements such as buttons, cards,
+tables, forms, modals, toasts, pagination, badges, avatars, and progress bars.
+All macros use Tailwind CSS utility classes and are accessible (ARIA
+attributes, focus outlines). They can be imported in any template via:
+    {% raw %}{% import "_components.html" as components %}{% endraw %}
+#}
+
+{# ---------------------------------------------------------------------
+   Button macro
+   Usage: {{ components.button('Save', type='submit', variant='primary') }}
+   Variants: primary, secondary, danger, link
+   Size: sm, md, lg (default md)
+   Additional classes can be passed via ``class``.
+   --------------------------------------------------------------------- #}
+{% macro button(label, type='button', variant='primary', size='md', class='') %}
+    {% set base = 'inline-flex items-center justify-center font-medium rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2' %}
+    {% set size_map = {'sm': 'px-2.5 py-1.5 text-sm',
+                      'md': 'px-4 py-2 text-base',
+                      'lg': 'px-6 py-3 text-lg'} %}
+    {% set variant_map = {
+        'primary': 'bg-indigo-600 text-white hover:bg-indigo-700 focus-visible:ring-indigo-500',
+        'secondary': 'bg-gray-200 text-gray-800 hover:bg-gray-300 focus-visible:ring-gray-500',
+        'danger': 'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500',
+        'link': 'text-indigo-600 hover:underline'
+    } %}
+    <button type="{{ type }}" class="{{ base }} {{ size_map.get(size, size_map['md']) }} {{ variant_map.get(variant, variant_map['primary']) }} {{ class }}">{{ label }}</button>
+{% endmacro %}
+
+{# ---------------------------------------------------------------------
+   Card macro
+   Usage: {{ components.card(title='My Card', content='Hello') }}
+   Pass arbitrary HTML via ``content`` (already safe) or use ``caller`` block.
+   --------------------------------------------------------------------- #}
+{% macro card(title='', content='', class='') %}
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm {{ class }}">
+        {% if title %}<div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700 font-semibold">{{ title }}</div>{% endif %}
+        <div class="p-4">
+            {% if caller %}{{ caller() }}{% else %}{{ content|safe }}{% endif %}
+        </div>
+    </div>
+{% endmacro %}
+
+{# ---------------------------------------------------------------------
+   Table macro
+   Usage:
+   {% raw %}{% call components.table(['Name', 'Age']) %}
+       <tr><td>John</td><td>30</td></tr>
+   {% endcall %}{% endraw %}
+   --------------------------------------------------------------------- #}
+{% macro table(headers, class='') %}
+    <div class="overflow-x-auto {{ class }}">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead class="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                {% for h in headers %}
+                    <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ h }}</th>
+                {% endfor %}
+                </tr>
+            </thead>
+            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                {{ caller() }}
+            </tbody>
+        </table>
+    </div>
+{% endmacro %}
+
+{# ---------------------------------------------------------------------
+   Form field macro (label + input)
+   Usage: {{ components.form_field('Email', type='email', name='email', required=True) }}
+   --------------------------------------------------------------------- #}
+{% macro form_field(label, type='text', name='', value='', placeholder='', required=False, minlength=None, pattern=None, rows=None, class='') %}
+    <div class="mb-3 {{ class }}">
+        <label class="form-label" for="{{ name }}">{{ label }}</label>
+        {% if type == 'textarea' %}
+            <textarea class="form-control" name="{{ name }}" id="{{ name }}" placeholder="{{ placeholder }}" {% if required %}required{% endif %}{% if minlength %} minlength="{{ minlength }}"{% endif %}{% if pattern %} pattern="{{ pattern }}"{% endif %}{% if rows %} rows="{{ rows }}"{% endif %}>{{ value }}</textarea>
+        {% else %}
+            <input class="form-control" type="{{ type }}" name="{{ name }}" id="{{ name }}" value="{{ value }}" placeholder="{{ placeholder }}" {% if required %}required{% endif %}{% if minlength %} minlength="{{ minlength }}"{% endif %}{% if pattern %} pattern="{{ pattern }}"{% endif %}>
+        {% endif %}
+    </div>
+{% endmacro %}
+
+{% macro form_select(label, name, options, value='', required=False, class='') %}
+    <div class="mb-3 {{ class }}">
+        <label class="form-label" for="{{ name }}">{{ label }}</label>
+        <select class="form-select" name="{{ name }}" id="{{ name }}" {% if required %}required{% endif %}>
+            {% for option_value, option_label in options %}
+                <option value="{{ option_value }}" {% if option_value|string == value|string %}selected{% endif %}>{{ option_label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+{% endmacro %}
+
+{# ---------------------------------------------------------------------
+   Modal macro (Bootstrap modal wrapper)
+   Usage:
+   {% raw %}{% call components.modal('myModal', title='Confirm') %}
+       <p>Are you sure?</p>
+   {% endcall %}{% endraw %}
+   --------------------------------------------------------------------- #}
+{% macro modal(id, title='', size='md', class='') %}
+    <div class="modal fade" id="{{ id }}" tabindex="-1" aria-labelledby="{{ id }}Label" aria-hidden="true">
+        <div class="modal-dialog modal-{{ size }} {{ class }}">
+            <div class="modal-content">
+                {% if title %}<div class="modal-header"><h5 class="modal-title" id="{{ id }}Label">{{ title }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>{% endif %}
+                <div class="modal-body">
+                    {{ caller() }}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endmacro %}
+
+{# ---------------------------------------------------------------------
+   Toast macro (Bootstrap toast)
+   Usage: {{ components.toast('msg-id', 'Success', 'Your changes were saved.', 'success') }}
+   --------------------------------------------------------------------- #}
+{% macro toast(id, title, body, variant='primary', autohide=True, delay=5000) %}
+    <div id="{{ id }}" class="toast align-items-center text-bg-{{ variant }} border-0" role="alert" aria-live="assertive" aria-atomic="true" {% if autohide %}data-bs-autohide="true" data-bs-delay="{{ delay }}"{% else %}data-bs-autohide="false"{% endif %}>
+        <div class="d-flex">
+            <div class="toast-body">
+                <strong>{{ title }}</strong> {{ body }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+{% endmacro %}
+
+{# ---------------------------------------------------------------------
+   Pagination macro
+   Usage: {{ components.pagination(page, total_pages, url_for('view', page='')) }}
+   --------------------------------------------------------------------- #}
+{% macro pagination(current, total, base_url) %}
+    <nav aria-label="Page navigation">
+        <ul class="pagination">
+            {% set prev = current - 1 %}
+            <li class="page-item {% if current <= 1 %}disabled{% endif %}"><a class="page-link" href="{{ base_url }}{{ prev }}" aria-label="Previous"><span aria-hidden="true">&laquo;</span></a></li>
+            {% for p in range(1, total + 1) %}
+                <li class="page-item {% if p == current %}active{% endif %}"><a class="page-link" href="{{ base_url }}{{ p }}">{{ p }}</a></li>
+            {% endfor %}
+            {% set nxt = current + 1 %}
+            <li class="page-item {% if current >= total %}disabled{% endif %}"><a class="page-link" href="{{ base_url }}{{ nxt }}" aria-label="Next"><span aria-hidden="true">&raquo;</span></a></li>
+        </ul>
+    </nav>
+{% endmacro %}
+
+{# ---------------------------------------------------------------------
+   Badge macro
+   Usage: {{ components.badge('New', variant='info') }}
+   --------------------------------------------------------------------- #}
+{% macro badge(label, variant='secondary', class='') %}
+    <span class="badge bg-{{ variant }} {{ class }}">{{ label }}</span>
+{% endmacro %}
+
+{# ---------------------------------------------------------------------
+   Avatar macro (initials)
+   Usage: {{ components.avatar('AB', size='md') }}
+   --------------------------------------------------------------------- #}
+{% macro avatar(initials, size='md', class='') %}
+    {% set size_map = {'sm': 'w-6 h-6 text-sm', 'md': 'w-8 h-8 text-base', 'lg': 'w-12 h-12 text-lg'} %}
+    <div class="flex items-center justify-center rounded-full bg-indigo-600 text-white {{ size_map.get(size, size_map['md']) }} {{ class }}">{{ initials }}</div>
+{% endmacro %}
+
+{# ---------------------------------------------------------------------
+   Progress bar macro
+   Usage: {{ components.progress_bar(70, label='70%') }}
+   --------------------------------------------------------------------- #}
+{% macro progress_bar(percent, label='', class='') %}
+    <div class="w-full bg-gray-200 rounded-full {{ class }}" role="progressbar" aria-valuenow="{{ percent }}" aria-valuemin="0" aria-valuemax="100">
+        <div class="bg-indigo-600 text-xs font-medium text-white text-center py-0.5 rounded-full" style="width: {{ percent }}%">{{ label or percent ~ '%' }}</div>
+    </div>
+{% endmacro %}
+
+{# ---------------------------------------------------------------------
+   Form macro – wraps a <form> element and optionally includes CSRF token.
+   Usage:
+   {% raw %}{% call components.form(method='post', action=url_for('agents.new'), aria_label='Create agent') %}
+       {{ components.form_field('Agent Name', name='name', required=True) }}
+   {% endcall %}{% endraw %}
+   --------------------------------------------------------------------- #}
+{% macro form(method='post', action='', aria_label='', class='') %}
+    <form method="{{ method }}" action="{{ action }}" {% if aria_label %}aria-label="{{ aria_label }}"{% endif %} class="{{ class }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {{ caller() }}
+    </form>
+{% endmacro %}
+
+{# End of component library #}

@@ -38,6 +38,32 @@ def list_checkpoints():
     return render_template("checkpoints/list.html", checkpoints=ckpt_list)
 
 
+@checkpoints_bp.route("/<checkpoint_id>/api/inspect")
+def inspect_checkpoint(checkpoint_id: str):
+    """Return checkpoint metadata for the weights inspector panel."""
+    with get_session() as session:
+        checkpoint = TenantService.scope(
+            session.query(Checkpoint).filter(Checkpoint.id == checkpoint_id),
+            Checkpoint,
+            session,
+        ).first()
+        if not checkpoint:
+            return jsonify({"error": "Checkpoint not found"}), 404
+        return jsonify({
+            "id": checkpoint.id,
+            "name": checkpoint.name,
+            "step": checkpoint.step,
+            "loss": checkpoint.loss,
+            "format": checkpoint.format,
+            "quantization": checkpoint.quantization,
+            "size_mb": round(checkpoint.size_bytes / (1024**2), 1),
+            "storage_key": checkpoint.storage_key,
+            "is_best": checkpoint.is_best,
+            "experiment_id": checkpoint.experiment_id,
+            "model_id": checkpoint.model_id,
+        })
+
+
 @checkpoints_bp.route("/<checkpoint_id>/quantize", methods=["POST"])
 def quantize_checkpoint(checkpoint_id: str):
     """Trigger GPTQ / AWQ post-training quantization."""

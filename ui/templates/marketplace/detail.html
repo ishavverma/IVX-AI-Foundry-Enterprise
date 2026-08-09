@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}{{ recipe.title }} — Marketplace{% endblock %}
+
+{% block content %}
+<div class="afe-animate-fade" style="max-width: 920px; margin: 0 auto;">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <p class="text-uppercase small text-secondary mb-1">Community asset</p>
+            <h1 class="h4 fw-bold mb-1">{{ recipe.title }}</h1>
+            <p class="text-secondary mb-0">By {{ recipe.author }} · {{ recipe.tier }}</p>
+        </div>
+        <a href="/marketplace" class="btn afe-btn-ghost"><i class="bi bi-arrow-left me-1"></i>Marketplace</a>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <div class="afe-card h-100">
+                <div class="d-flex flex-wrap gap-1 mb-3">
+                    {% for tag in recipe.tags %}<span class="afe-badge afe-badge-info">#{{ tag }}</span>{% endfor %}
+                </div>
+                <h2 class="h6 fw-bold mb-3">Overview</h2>
+                <p class="text-secondary">{{ recipe.description }}</p>
+                <div class="afe-chart-frame mt-4">
+                    <div class="small text-secondary mb-2">Compatibility</div>
+                    <div class="d-flex align-items-center gap-2"><i class="bi bi-check-circle-fill text-success"></i><span>{{ recipe.tier }}</span></div>
+                    <div class="d-flex align-items-center gap-2 mt-2"><i class="bi bi-patch-check-fill text-info"></i><span>Community metadata available</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="afe-card">
+                <div class="d-flex justify-content-between py-2 border-bottom border-secondary-subtle"><span class="text-secondary">Downloads</span><strong>{{ recipe.downloads }}</strong></div>
+                <div class="d-flex justify-content-between py-2 border-bottom border-secondary-subtle"><span class="text-secondary">Stars</span><strong><i class="bi bi-star-fill text-warning me-1"></i>{{ recipe.stars }}</strong></div>
+                {% call components.form(method='post', action='/marketplace/install/' ~ recipe.id, aria_label='Install recipe', class='mt-4') %}
+                    <button type="submit" class="btn afe-btn-primary w-100"><i class="bi bi-cloud-arrow-down me-1"></i>Import to Registry</button>
+                {% endcall %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

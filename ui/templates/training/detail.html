@@ -13,7 +13,7 @@
                 {% else %}
                     <span class="afe-badge afe-badge-info afe-animate-pulse"><i class="bi bi-arrow-repeat"></i> {{ experiment.status | capitalize }}</span>
                 {% endif %}
-                <span class="afe-badge afe-badge-primary">FP16</span>
+                <span class="afe-badge afe-badge-primary">{{ experiment.hyperparams.precision | upper }}</span>
             </div>
             <p class="text-secondary mb-0 small">Training steps: {{ experiment.current_step }} / {{ experiment.max_steps }} &bull; Total tokens: {{ (experiment.total_tokens / 1e6) | round(2) }}M</p>
         </div>
@@ -26,25 +26,25 @@
     <div class="row g-3 mb-4">
         <div class="col-sm-6 col-xl-3">
             <div class="afe-stat-card">
-                <div class="afe-stat-value font-monospace">{{ experiment.current_loss or '0.00' }}</div>
+                <div class="afe-stat-value font-monospace" id="liveLoss">{{ experiment.current_loss or '0.00' }}</div>
                 <div class="afe-stat-label">Current Cross-Entropy Loss</div>
             </div>
         </div>
         <div class="col-sm-6 col-xl-3">
             <div class="afe-stat-card">
-                <div class="afe-stat-value font-monospace text-success">{{ experiment.best_loss or '0.00' }}</div>
+                <div class="afe-stat-value font-monospace text-success" id="liveBestLoss">{{ experiment.best_loss or '0.00' }}</div>
                 <div class="afe-stat-label">Best Loss (Perplexity: {{ ((experiment.best_loss or 1.0) ** 2.718) | round(1) }})</div>
             </div>
         </div>
         <div class="col-sm-6 col-xl-3">
             <div class="afe-stat-card">
-                <div class="afe-stat-value text-accent">{{ (experiment.total_tokens / 1e6) | round(2) }}M</div>
+                <div class="afe-stat-value text-accent" id="liveTokens">{{ (experiment.total_tokens / 1e6) | round(2) }}M</div>
                 <div class="afe-stat-label">Trained Tokens</div>
             </div>
         </div>
         <div class="col-sm-6 col-xl-3">
             <div class="afe-stat-card">
-                <div class="afe-stat-value text-warning">{{ experiment.tokens_per_sec or '0' }}</div>
+                <div class="afe-stat-value text-warning" id="liveThroughput">{{ experiment.tokens_per_sec or '0' }}</div>
                 <div class="afe-stat-label">Throughput (Tokens / Sec)</div>
             </div>
         </div>
@@ -55,6 +55,7 @@
         <div class="col-lg-6">
             <div class="afe-card">
                 <h2 class="h6 fw-bold mb-3"><i class="bi bi-graph-down me-2 text-primary"></i>Step-by-Step Loss Progression</h2>
+                <div class="afe-chart-frame mb-3"><canvas id="lossChart" height="150" aria-label="Training loss chart"></canvas></div>
                 <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
                     <table class="afe-table">
                         <thead>
@@ -126,4 +127,49 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+(function () {
+    const canvas = document.getElementById('lossChart');
+    const context = canvas?.getContext('2d');
+    const lossUrl = {{ url_for('training.live_experiment', experiment_id=experiment.id) | tojson }};
+    const lossValues = {{ experiment.history | tojson }};
+
+    function drawChart(history) {
+        if (!context || !history.length) return;
+        const width = canvas.clientWidth || 560;
+        const height = 150;
+        const values = history.map(point => Number(point.loss) || 0);
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+        const range = Math.max(max - min, 0.001);
+        canvas.width = width * window.devicePixelRatio;
+        canvas.height = height * window.devicePixelRatio;
+        context.scale(window.devicePixelRatio, window.devicePixelRatio);
+        context.clearRect(0, 0, width, height);
+        context.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--color-accent-500').trim();
+        context.lineWidth = 2;
+        context.beginPath();
+        values.forEach((value, index) => {
+            const x = values.length === 1 ? width / 2 : index * width / (values.length - 1);
+            const y = height - ((value - min) / range) * (height - 12) - 6;
+            index ? context.lineTo(x, y) : context.moveTo(x, y);
+        });
+        context.stroke();
+    }
+
+    function update(data) {
+        document.getElementById('liveLoss').textContent = data.current_loss ?? '0.00';
+        document.getElementById('liveBestLoss').textContent = data.best_loss ?? '0.00';
+        document.getElementById('liveTokens').textContent = `${((data.total_tokens || 0) / 1e6).toFixed(2)}M`;
+        document.getElementById('liveThroughput').textContent = data.tokens_per_sec ?? '0';
+        drawChart(data.history || []);
+    }
+
+    drawChart(lossValues);
+    setInterval(() => fetch(lossUrl).then(response => response.json()).then(update).catch(() => {}), 5000);
+}());
+</script>
 {% endblock %}

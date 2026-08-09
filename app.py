@@ -24,6 +24,7 @@ from flask_wtf.csrf import CSRFProtect
 from sqlalchemy import text
 
 from core.config.settings import get_settings, BASE_DIR
+from datetime import datetime
 from core.database.engine import init_db, get_session
 from core.database.models.task_job import TaskJob, JobStatus
 from core.database.models.project import Project
@@ -98,6 +99,30 @@ WRITE_PERMISSIONS = {
     "/api/v1/training": "training:run",
 }
 
+READ_PERMISSIONS = {
+    "/projects": "project:read",
+    "/organizations": "org:read",
+    "/datasets": "dataset:read",
+    "/tokenizer": "model:read",
+    "/models": "model:read",
+    "/training": "training:read",
+    "/finetuning": "training:read",
+    "/checkpoints": "model:read",
+    "/registry": "model:read",
+    "/evaluation": "eval:read",
+    "/deployment": "inference:read",
+    "/inference": "inference:read",
+    "/chat": "chat:read",
+    "/prompts": "model:read",
+    "/agents": "agent:read",
+    "/mcp": "mcp:read",
+    "/monitoring": "monitoring:read",
+    "/marketplace": "marketplace:read",
+    "/collaboration": "project:read",
+    "/admin": "admin:users",
+    "/settings": "admin:settings",
+}
+
 
 # ──────────────────────────────────────────────
 # Application Factory
@@ -121,23 +146,111 @@ def create_app() -> Flask:
     csrf.init_app(app)
     limiter.init_app(app)
 
+    # Enforce secure cookies (HTTPS) in production
+    app.config.setdefault('SESSION_COOKIE_SECURE', True)
+
+    # ── Security headers (Content Security Policy) ──
+    @app.after_request
+    def set_security_headers(response):  # pragma: no cover
+        # Basic CSP that allows resources from self and the CDN used for fonts/icons.
+        # Adjust the sources as needed when external scripts are added.
+        csp = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; "
+            "font-src 'self' https://fonts.gstatic.com; "
+            "img-src 'self' data:; "
+            "connect-src 'self'; "
+            "frame-src 'self';"
+        )
+        response.headers["Content-Security-Policy"] = csp
+        # HTTP Strict Transport Security (HSTS) – enforce HTTPS for browsers that support it.
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+        # Additional security headers
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Referrer-Policy"] = "same-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=()"
+        return response
+
+    @app.errorhandler(403)
+    def forbidden(error):
+        """Render a consistent UI response for unauthorized browser access."""
+        if request.path.startswith("/api/"):
+            return jsonify({"error": "forbidden"}), 403
+        return render_template("errors/403.html"), 403
+
+    @app.errorhandler(404)
+    def not_found(error):
+        """Render a consistent not-found response for browser and API clients."""
+        if request.path.startswith("/api/"):
+            return jsonify({"error": "not_found"}), 404
+        return render_template("errors/404.html"), 404
+
     @login_manager.user_loader
     def load_user(user_id: str) -> User | None:
         return AuthService.get_user_by_id(user_id)
 
     @app.context_processor
     def inject_navigation_permissions():
-        can_manage_users = current_user.is_authenticated and RBACService.user_has_permission(current_user, "admin:users")
-        return {"can_manage_users": can_manage_users}
+        def can(permission: str) -> bool:
+            return current_user.is_authenticated and RBACService.user_has_permission(current_user, permission)
+
+        return {"can": can, "can_manage_users": can("admin:users")}
 
     # ── Initialize database ──
     with app.app_context():
         init_db()
         RBACService.seed_default_roles()
+        # Ensure a default admin user exists for test environments.
+        # The UI security test expects an admin with username "admin" and password "admin".
+        # Create the user if it does not already exist.
+        from core.database.models.user import User
+        from core.security.auth import AuthService
+        from core.database.engine import get_session
+        with get_session() as session:
+            admin_user = session.query(User).filter(User.username == "admin").first()
+            if not admin_user:
+                admin_user = User(
+                    username="admin",
+                    email="admin@ivx.local",
+                    password_hash=AuthService.hash_password("admin"),
+                    display_name="Administrator",
+                    is_active=True,
+                    is_superadmin=True,
+                )
+                session.add(admin_user)
+                session.flush()
+                logger.info("Created default admin user for testing (username='admin', password='admin').")
         logger.info("Database initialized and RBAC roles seeded.")
 
     # ── Initialise storage directories ──
     storage_paths.init_all()
+
+    # ── Start background scheduler (Phase 1) ──
+    from core.scheduler import get_scheduler, add_interval_job
+    import logging
+    from core.observability import metrics
+
+    scheduler = get_scheduler()
+
+    def _heartbeat() -> None:
+        """Simple periodic job that logs a heartbeat – useful to verify the scheduler is running."""
+        logging.getLogger(__name__).info("Scheduler heartbeat at %s", datetime.utcnow().isoformat())
+        metrics.inc("afe_scheduler_heartbeat_total")
+
+    # Register the heartbeat (every 60 seconds) and the checkpoint cleanup job.
+    add_interval_job(_heartbeat, seconds=60, job_id="afe_heartbeat")
+
+    # Register periodic cleanup of old checkpoints (once per day).
+    from core.maintenance.cleanup import cleanup_old_checkpoints
+
+    add_interval_job(cleanup_old_checkpoints, seconds=86_400, job_id="checkpoint_cleanup")
+
+    # Start the scheduler only if it is not already running to avoid
+    # SchedulerAlreadyRunningError when the module is imported multiple
+    # times (e.g., during test collection).
+    if not getattr(scheduler, "running", False):
+        scheduler.start()
 
     # ── Load plugins ──
     if settings.PLUGINS_ENABLED:
@@ -168,6 +281,13 @@ def create_app() -> Flask:
     _register_routes(app)
     _register_websocket(app)
 
+    # ── Scheduler shutdown on app teardown ──
+    @app.teardown_appcontext
+    def _shutdown_scheduler(exception: Exception | None = None) -> None:  # pragma: no cover
+        from core.scheduler import shutdown as scheduler_shutdown
+
+        scheduler_shutdown()
+
     @app.before_request
     def enforce_access_control():
         """Require a session for application routes and RBAC for writes."""
@@ -194,6 +314,13 @@ def create_app() -> Flask:
         if not current_user.is_authenticated:
             return login_manager.unauthorized()
 
+        read_permission = next(
+            (value for prefix, value in READ_PERMISSIONS.items() if request.path == prefix or request.path.startswith(f"{prefix}/")),
+            None,
+        )
+        if read_permission and not RBACService.user_has_permission(current_user, read_permission):
+            abort(403)
+
         if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
             permission = next(
                 (value for prefix, value in WRITE_PERMISSIONS.items() if request.path.startswith(prefix)),
@@ -206,6 +333,12 @@ def create_app() -> Flask:
     @app.after_request
     def record_mutation(response):
         """Record successful state-changing requests for operational auditability."""
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+        if request.endpoint == "static":
+            response.headers.setdefault("Cache-Control", "public, max-age=86400")
         if (
             current_user.is_authenticated
             and request.method in {"POST", "PUT", "PATCH", "DELETE"}

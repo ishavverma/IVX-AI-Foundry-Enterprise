@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Page Not Found{% endblock %}
+{% block content %}
+<section class="afe-animate-fade" style="max-width: 720px; margin: 8vh auto; text-align: center;">
+    <div class="afe-card" style="padding: 3rem 2rem;">
+        <span class="afe-logo-icon" style="margin: 0 auto 1.5rem; width: 64px; height: 64px; font-size: 1.75rem; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--color-primary-500), var(--color-accent-500)); border-radius: var(--radius-lg); color: #fff;"><i class="bi bi-compass"></i></span>
+        <p class="text-uppercase small fw-semibold text-secondary mb-2">Error 404</p>
+        <h1 class="h3 fw-bold mb-3">We could not find that workspace</h1>
+        <p class="text-secondary mb-4">The page may have moved, or the resource is not available in this organization.</p>
+        <a class="afe-btn afe-btn-primary" href="/"><i class="bi bi-arrow-left"></i>Return to overview</a>
+    </div>
+</section>
+{% endblock %}

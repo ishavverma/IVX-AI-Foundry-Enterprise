@@ -2,66 +2,235 @@
 {% block title %}Chat Studio — AI Foundry Enterprise{% endblock %}
 
 {% block content %}
-<div class="afe-animate-fade" x-data="chatStudio('{{ active_session.id }}')">
+<div class="afe-animate-fade" x-data="chatStudio('{{ active_session.id }}', '{{ csrf_token() }}')">
     <div class="row g-3" style="height: calc(100vh - 120px);">
         <!-- Sidebar: Conversation Sessions -->
         <div class="col-md-4 col-lg-3 d-flex flex-column" style="height: 100%;">
             <div class="afe-card d-flex flex-column h-100 p-3">
-                <form method="POST" action="/chat/new_session" class="mb-3">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn afe-btn-primary w-100"><i class="bi bi-plus-lg me-1"></i>New Conversation</button>
-                </form>
-                <div class="small fw-bold text-secondary mb-2">Recent Chats</div>
-                <div class="flex-grow-1 overflow-auto">
+                <button type="button" class="btn afe-btn-primary w-100 mb-3" data-bs-toggle="modal" data-bs-target="#newChatModal">
+                    <i class="bi bi-plus-lg me-1"></i>New Conversation
+                </button>
+                
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small fw-bold text-secondary text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.05em;">Recent Chats</span>
+                    <span class="badge bg-secondary-subtle text-secondary">{{ sessions|length }}</span>
+                </div>
+                
+                <div class="flex-grow-1 overflow-auto pe-1">
                     {% for s in sessions %}
-                    <a href="/chat/?session_id={{ s.id }}" class="d-block p-2 rounded mb-1 text-decoration-none {% if s.id == active_session.id %}text-accent fw-bold{% else %}text-secondary{% endif %}" style="background: {% if s.id == active_session.id %}var(--afe-bg-elevated){% else %}transparent{% endif %}; font-size: 0.85rem;">
-                        <i class="bi bi-chat-dots me-2"></i>{{ s.title }}
-                    </a>
+                    <div class="d-flex align-items-center justify-content-between rounded mb-1 p-1" 
+                         style="background: {% if s.id == active_session.id %}var(--afe-bg-elevated){% else %}transparent{% endif %}; border: 1px solid {% if s.id == active_session.id %}var(--afe-border){% else %}transparent{% endif %};">
+                        <a href="/chat/?session_id={{ s.id }}" class="text-decoration-none text-truncate flex-grow-1 py-1 px-2 {% if s.id == active_session.id %}text-accent fw-bold{% else %}text-secondary{% endif %}" style="font-size: 0.85rem;">
+                            <i class="bi bi-chat-dots me-2"></i>{{ s.title }}
+                        </a>
+                        {% if s.id == active_session.id %}
+                        {% call components.form(method='post', action='/chat/delete/' ~ s.id, aria_label='Delete conversation', class='m-0 p-0') %}
+                            <button type="submit" class="btn btn-link text-danger p-1" title="Delete chat" aria-label="Delete chat" style="font-size: 0.8rem;"><i class="bi bi-trash"></i></button>
+                        {% endcall %}
+                        {% endif %}
+                    </div>
                     {% endfor %}
+                </div>
+
+                <div class="pt-2 border-top border-secondary-subtle small text-secondary d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-cpu me-1"></i>Active: <strong>{{ active_session.model_name }}</strong></span>
                 </div>
             </div>
         </div>
 
         <!-- Chat Workspace Area -->
         <div class="col-md-8 col-lg-9 d-flex flex-column" style="height: 100%;">
-            <div class="afe-card d-flex flex-column h-100 p-0 overflow-hidden">
+            <div class="afe-card d-flex flex-column h-100 p-0 overflow-hidden shadow-sm">
                 <!-- Top Toolbar -->
-                <div class="p-3 border-bottom border-secondary-subtle d-flex align-items-center justify-content-between">
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="fw-bold">{{ active_session.title }}</span>
-                        <span class="afe-badge afe-badge-info">{{ active_session.model_name }}</span>
+                <div class="p-3 border-bottom border-secondary-subtle d-flex align-items-center justify-content-between bg-body-tertiary">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span class="fw-bold fs-6">{{ active_session.title }}</span>
+                        <span class="afe-badge afe-badge-info"><i class="bi bi-stars me-1"></i>{{ active_session.model_name }}</span>
+                        <span class="badge bg-dark-subtle text-secondary border border-secondary-subtle" style="font-size: 0.75rem;"><i class="bi bi-cpu me-1"></i>Hybrid Mamba-GQA</span>
                     </div>
-                    <span class="small text-secondary"><i class="bi bi-cpu me-1"></i>Zero-KV Linear Scaling</span>
+                    
+                    <div class="d-flex align-items-center gap-2">
+                        {% call components.form(method='post', action='/chat/clear/' ~ active_session.id, aria_label='Clear conversation', class='m-0') %}
+                            <button type="submit" class="btn btn-sm btn-outline-secondary" title="Clear chat history"><i class="bi bi-eraser me-1"></i>Clear</button>
+                        {% endcall %}
+                        <button type="button" class="btn btn-sm afe-btn-primary" data-bs-toggle="offcanvas" data-bs-target="#chatSettingsDrawer" title="Model & System Prompt Settings">
+                            <i class="bi bi-sliders me-1"></i>Settings
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Message stream box -->
-                <div class="flex-grow-1 p-4 overflow-auto d-flex flex-column gap-3" id="messagesContainer">
+                <div class="flex-grow-1 p-4 overflow-auto d-flex flex-column gap-3" id="messagesContainer" style="scroll-behavior: smooth;">
+                    {% if not messages and not dynamicMessages %}
+                    <!-- Empty state starter chips -->
+                    <div class="d-flex flex-column align-items-center justify-content-center h-100 text-center my-auto p-4">
+                        <div class="p-3 rounded-circle bg-primary-subtle text-primary mb-3" style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem;">
+                            <i class="bi bi-robot"></i>
+                        </div>
+                        <h5 class="fw-bold mb-1">AI Foundry Enterprise Chat Studio</h5>
+                        <p class="text-secondary small mb-4" style="max-width: 480px;">Interact with your hybrid state-space & transformer foundation models, inspect model reasoning, or write distributed training code.</p>
+                        
+                        <div class="row g-2 w-100" style="max-width: 680px;">
+                            <div class="col-sm-6">
+                                <button type="button" @click="sendPrompt('Explain the hybrid Mamba-2 SSM and Transformer attention architecture in AFE-Base-7B.')" class="btn btn-outline-secondary text-start w-100 p-3 h-100 rounded-3 border-secondary-subtle">
+                                    <div class="fw-semibold small text-accent mb-1"><i class="bi bi-cpu me-1"></i>Architecture Deep Dive</div>
+                                    <div class="text-secondary" style="font-size: 0.8rem;">Explain hybrid Mamba-2 SSM & Grouped-Query Attention scaling.</div>
+                                </button>
+                            </div>
+                            <div class="col-sm-6">
+                                <button type="button" @click="sendPrompt('Provide a PyTorch module implementation for the HybridDecoderLayer with SwiGLU.')" class="btn btn-outline-secondary text-start w-100 p-3 h-100 rounded-3 border-secondary-subtle">
+                                    <div class="fw-semibold small text-accent mb-1"><i class="bi bi-code-square me-1"></i>PyTorch Implementation</div>
+                                    <div class="text-secondary" style="font-size: 0.8rem;">Generate forward pass code with selective state mixing.</div>
+                                </button>
+                            </div>
+                            <div class="col-sm-6">
+                                <button type="button" @click="sendPrompt('What are the training hyperparameters and loss convergence for the 7B pretraining run?')" class="btn btn-outline-secondary text-start w-100 p-3 h-100 rounded-3 border-secondary-subtle">
+                                    <div class="fw-semibold small text-accent mb-1"><i class="bi bi-graph-up me-1"></i>Training Telemetry</div>
+                                    <div class="text-secondary" style="font-size: 0.8rem;">Review AdamW learning rate schedules and loss reduction.</div>
+                                </button>
+                            </div>
+                            <div class="col-sm-6">
+                                <button type="button" @click="sendPrompt('Hello! How can I assist?')" class="btn btn-outline-secondary text-start w-100 p-3 h-100 rounded-3 border-secondary-subtle">
+                                    <div class="fw-semibold small text-accent mb-1"><i class="bi bi-chat-heart me-1"></i>Assistant Overview</div>
+                                    <div class="text-secondary" style="font-size: 0.8rem;">General capabilities and platform workflows overview.</div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
                     {% for m in messages %}
                     <div class="d-flex {% if m.role == 'user' %}justify-content-end{% else %}justify-content-start{% endif %}">
-                        <div class="p-3 rounded" style="max-width: 80%; background: {% if m.role == 'user' %}var(--afe-primary){% else %}var(--afe-bg-elevated){% endif %}; border: 1px solid var(--afe-border);">
-                            <div class="small text-secondary mb-1 fw-bold">{% if m.role == 'user' %}You{% else %}AFE Assistant{% endif %}</div>
-                            <div style="font-size: 0.9rem; line-height: 1.5; white-space: pre-wrap;">{{ m.content }}</div>
+                        <div class="p-3 rounded-4 shadow-sm" style="max-width: 82%; {% if m.role == 'user' %}background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); color: #ffffff;{% else %}background: var(--afe-bg-elevated); color: var(--afe-text-primary); border: 1px solid var(--afe-border);{% endif %}">
+                            <div class="d-flex align-items-center justify-content-between mb-1" style="font-size: 0.75rem; {% if m.role == 'user' %}color: rgba(255,255,255,0.85);{% else %}color: var(--afe-text-muted);{% endif %}">
+                                <span class="fw-bold">{% if m.role == 'user' %}<i class="bi bi-person-fill me-1"></i>You{% else %}<i class="bi bi-stars me-1 text-primary"></i>AFE Assistant ({{ active_session.model_name }}){% endif %}</span>
+                                <span><i class="bi bi-coin me-1"></i>{{ m.tokens }} tok</span>
+                            </div>
+                            <div style="font-size: 0.92rem; line-height: 1.6; white-space: pre-wrap;">{{ m.content }}</div>
                         </div>
                     </div>
                     {% endfor %}
+
                     <template x-for="m in dynamicMessages" :key="m.id">
                         <div class="d-flex" :class="m.role === 'user' ? 'justify-content-end' : 'justify-content-start'">
-                            <div class="p-3 rounded" :style="m.role === 'user' ? 'background: var(--afe-primary);' : 'background: var(--afe-bg-elevated); border: 1px solid var(--afe-border);'" style="max-width: 80%;">
-                                <div class="small text-secondary mb-1 fw-bold" x-text="m.role === 'user' ? 'You' : 'AFE Assistant'"></div>
-                                <div style="font-size: 0.9rem; line-height: 1.5; white-space: pre-wrap;" x-text="m.content"></div>
+                            <div class="p-3 rounded-4 shadow-sm" :style="m.role === 'user' ? 'background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); color: #ffffff; max-width: 82%;' : 'background: var(--afe-bg-elevated); color: var(--afe-text-primary); border: 1px solid var(--afe-border); max-width: 82%;'">
+                                <div class="d-flex align-items-center justify-content-between mb-1" style="font-size: 0.75rem;" :style="m.role === 'user' ? 'color: rgba(255,255,255,0.85);' : 'color: var(--afe-text-muted);'">
+                                    <span class="fw-bold" x-html="m.role === 'user' ? '<i class=\"bi bi-person-fill me-1\"></i>You' : '<i class=\"bi bi-stars me-1 text-primary\"></i>AFE Assistant'"></span>
+                                    <span x-text="m.tokens ? m.tokens + ' tok' : 'Live'"><i class="bi bi-coin me-1"></i></span>
+                                </div>
+                                <div style="font-size: 0.92rem; line-height: 1.6; white-space: pre-wrap;" x-text="m.content"></div>
                             </div>
                         </div>
                     </template>
+
+                    <!-- Loading / Thinking indicator -->
+                    <div x-show="isLoading" class="d-flex justify-content-start afe-animate-fade" style="display: none;">
+                        <div class="p-3 rounded-4 shadow-sm d-flex align-items-center gap-2" style="background: var(--afe-bg-elevated); border: 1px solid var(--afe-border);">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                            <span class="small text-secondary fw-semibold">AFE Assistant is generating response...</span>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Input Composer -->
-                <div class="p-3 border-top border-secondary-subtle">
-                    <form @submit.prevent="sendMessage" class="d-flex gap-2">
-                        <input type="text" x-model="inputText" class="form-control" placeholder="Ask anything about foundation model architectures, pretraining, or write code…" required>
-                        <button type="submit" class="btn afe-btn-primary px-4"><i class="bi bi-send-fill"></i></button>
+                <div class="p-3 border-top border-secondary-subtle bg-body-tertiary">
+                    <form @submit.prevent="sendMessage" class="d-flex flex-column gap-2">
+                        <div class="d-flex gap-2 align-items-end">
+                            <textarea x-model="inputText" 
+                                      @keydown.enter.exact.prevent="sendMessage" 
+                                      class="form-control rounded-3 shadow-none" 
+                                      rows="2" 
+                                      placeholder="Ask about model architectures, distributed training, loss curves, or PyTorch code... (Press Enter to send, Shift+Enter for newline)" 
+                                      :disabled="isLoading"
+                                      required></textarea>
+                            <button type="submit" class="btn afe-btn-primary px-4 py-2" :disabled="isLoading || !inputText.trim()" style="min-height: 48px;">
+                                <i class="bi bi-send-fill" x-show="!isLoading"></i>
+                                <span class="spinner-border spinner-border-sm" x-show="isLoading" style="display: none;"></span>
+                            </button>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center small text-secondary px-1">
+                            <span><i class="bi bi-shield-check text-success me-1"></i>Governed Session &amp; Multi-turn Context Active</span>
+                            <span>Model: <strong>{{ active_session.model_name }}</strong></span>
+                        </div>
                     </form>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- New Chat Modal -->
+    <div class="modal fade" id="newChatModal" tabindex="-1" aria-labelledby="newChatModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content afe-card border-0 p-3">
+                {% call components.form(method='post', action='/chat/new_session', aria_label='Create chat session') %}
+                    <div class="modal-header border-0 pb-2">
+                        <h5 class="modal-title fw-bold" id="newChatModalLabel"><i class="bi bi-chat-plus me-2 text-primary"></i>Start New Conversation</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body d-flex flex-column gap-3">
+                        <div>
+                            <label class="form-label small fw-bold">Conversation Title</label>
+                            <input type="text" name="title" class="form-control" placeholder="e.g. 7B Hybrid Architecture Review" required>
+                        </div>
+                        <div>
+                            <label class="form-label small fw-bold">Model Architecture / Preset</label>
+                            <select name="model_name" class="form-select">
+                                {% for m in models %}
+                                <option value="{{ m }}" {% if '7B' in m %}selected{% endif %}>{{ m }}</option>
+                                {% endfor %}
+                                <option value="AFE-Base-7B Hybrid">AFE-Base-7B Hybrid (9.3B Params)</option>
+                                <option value="AFE-Small-2B">AFE-Small-2B (1.7B Params)</option>
+                                <option value="AFE-Nano-40M">AFE-Nano-40M (34M Params)</option>
+                                <option value="AFE-MoE-100B">AFE-MoE-100B (39.1B Active)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label small fw-bold">System Prompt</label>
+                            <textarea name="system_prompt" class="form-control" rows="3">You are AFE, a high-performance foundation model assistant optimized for hybrid Mamba-Transformer reasoning and ML engineering.</textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 pt-2">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn afe-btn-primary"><i class="bi bi-check2 me-1"></i>Create Conversation</button>
+                    </div>
+                {% endcall %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Offcanvas Drawer -->
+    <div class="offcanvas offcanvas-end afe-card border-0 p-3" tabindex="-1" id="chatSettingsDrawer" aria-labelledby="chatSettingsDrawerLabel">
+        <div class="offcanvas-header border-bottom border-secondary-subtle pb-3">
+            <h5 class="offcanvas-title fw-bold" id="chatSettingsDrawerLabel"><i class="bi bi-sliders me-2 text-primary"></i>Session Settings</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body d-flex flex-column gap-3 pt-3">
+            {% call components.form(method='post', action='/chat/new_session', aria_label='Update chat session', class='d-flex flex-column gap-3') %}
+                <div>
+                    <label class="form-label small fw-bold">Conversation Title</label>
+                    <input type="text" name="title" class="form-control" value="{{ active_session.title }}" required>
+                </div>
+                <div>
+                    <label class="form-label small fw-bold">Model Engine</label>
+                    <select name="model_name" class="form-select">
+                        <option value="AFE-Base-7B Hybrid" {% if active_session.model_name == 'AFE-Base-7B Hybrid' or '7b' in active_session.model_name.lower() %}selected{% endif %}>AFE-Base-7B Hybrid (9.3B)</option>
+                        <option value="AFE-Small-2B" {% if active_session.model_name == 'AFE-Small-2B' %}selected{% endif %}>AFE-Small-2B (1.7B)</option>
+                        <option value="AFE-Nano-40M" {% if active_session.model_name == 'AFE-Nano-40M' %}selected{% endif %}>AFE-Nano-40M (34M)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label small fw-bold">System Prompt</label>
+                    <textarea name="system_prompt" class="form-control" rows="4">{{ active_session.system_prompt or 'You are AFE, a high-performance foundation model assistant.' }}</textarea>
+                </div>
+                <div>
+                    <label class="form-label small fw-bold d-flex justify-content-between">
+                        <span>Temperature</span>
+                        <span>{{ active_session.temperature or 0.7 }}</span>
+                    </label>
+                    <input type="range" name="temperature" class="form-range" min="0" max="1.5" step="0.05" value="{{ active_session.temperature or 0.7 }}">
+                </div>
+                <button type="submit" class="btn afe-btn-primary w-100 mt-2"><i class="bi bi-save me-1"></i>Save &amp; Apply</button>
+            {% endcall %}
         </div>
     </div>
 </div>
@@ -69,30 +238,62 @@
 
 {% block scripts_extra %}
 <script>
-function chatStudio(sessionId) {
+function chatStudio(sessionId, csrfToken) {
     return {
         inputText: "",
         dynamicMessages: [],
+        isLoading: false,
+        init() {
+            this.$nextTick(() => {
+                const c = document.getElementById("messagesContainer");
+                if (c) c.scrollTop = c.scrollHeight;
+            });
+        },
+        sendPrompt(text) {
+            this.inputText = text;
+            this.sendMessage();
+        },
         async sendMessage() {
-            if (!this.inputText.trim()) return;
-            const userText = this.inputText;
+            if (!this.inputText.trim() || this.isLoading) return;
+            const userText = this.inputText.trim();
             this.inputText = "";
-            this.dynamicMessages.push({id: Date.now(), role: "user", content: userText});
+            this.isLoading = true;
+            this.dynamicMessages.push({id: Date.now(), role: "user", content: userText, tokens: userText.split(/\s+/).length});
             
+            this.$nextTick(() => {
+                const c = document.getElementById("messagesContainer");
+                if (c) c.scrollTop = c.scrollHeight;
+            });
+
             try {
                 const res = await fetch('/chat/send', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken || (document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').content : '')
+                    },
                     body: JSON.stringify({session_id: sessionId, message: userText})
                 });
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.error || `Chat request failed with status ${res.status}`);
+                }
                 const data = await res.json();
-                this.dynamicMessages.push({id: Date.now() + 1, role: "assistant", content: data.content});
+                this.dynamicMessages.push({id: Date.now() + 1, role: "assistant", content: data.content, tokens: data.tokens});
+            } catch (err) {
+                console.error("Chat error:", err);
+                this.dynamicMessages.push({
+                    id: Date.now() + 1, 
+                    role: "assistant", 
+                    content: "⚠️ An error occurred while generating response: " + err.message + ". Please verify connection.",
+                    tokens: 0
+                });
+            } finally {
+                this.isLoading = false;
                 this.$nextTick(() => {
                     const c = document.getElementById("messagesContainer");
                     if (c) c.scrollTop = c.scrollHeight;
                 });
-            } catch (err) {
-                console.error("Chat error:", err);
             }
         }
     }

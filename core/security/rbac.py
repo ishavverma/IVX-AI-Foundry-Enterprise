@@ -34,6 +34,9 @@ PERMISSIONS = {
     "eval:read", "eval:run",
     # Inference / Deployment
     "inference:read", "inference:deploy", "inference:delete",
+    # Experience and operations
+    "dashboard:read", "monitoring:read", "chat:read", "agent:read",
+    "mcp:read", "marketplace:read",
     # Admin
     "admin:users", "admin:roles", "admin:settings", "admin:audit",
 }
@@ -49,6 +52,8 @@ DEFAULT_ROLES = {
         "training:read", "training:run",
         "eval:read", "eval:run",
         "inference:read",
+        "dashboard:read", "monitoring:read", "chat:read", "agent:read",
+        "mcp:read", "marketplace:read",
     },
     "viewer": {
         "org:read", "project:read", "dataset:read", "model:read",
@@ -129,4 +134,6 @@ class RBACService:
                         permissions=",".join(sorted(perms)),
                         is_system=True,
                     ))
+                elif existing.is_system:
+                    existing.permissions = ",".join(sorted(perms))
             logger.info("Default RBAC roles seeded.")

@@ -11,8 +11,7 @@
             <p class="text-secondary mb-0" style="font-size: 0.85rem;">Monitor model definitions, experiments, resources, and governed production activity.</p>
         </div>
         <div class="d-flex gap-2">
-            <button class="btn afe-btn-ghost"><i class="bi bi-download me-1"></i>Export</button>
-            <button class="btn afe-btn-primary"><i class="bi bi-plus-lg me-1"></i>New Project</button>
+            {% if can('project:write') %}<a href="/projects/new" class="btn afe-btn-primary"><i class="bi bi-plus-lg me-1"></i>New Project</a>{% endif %}
         </div>
     </div>
 
@@ -142,10 +141,10 @@
             <div class="afe-card">
                 <h2 class="h6 fw-bold mb-3">Quick Actions</h2>
                 <div class="d-grid gap-2">
-                    <a href="/models/new" class="btn afe-btn-ghost text-start"><i class="bi bi-boxes me-2"></i>Define architecture</a>
-                    <a href="/datasets" class="btn afe-btn-ghost text-start"><i class="bi bi-database me-2"></i>Import Dataset</a>
-                    <a href="/training" class="btn afe-btn-ghost text-start"><i class="bi bi-lightning-charge me-2"></i>Start Training</a>
-                    <a href="/chat" class="btn afe-btn-ghost text-start"><i class="bi bi-chat-dots me-2"></i>Open Chat</a>
+                    {% if can('model:write') %}<a href="/models/new" class="btn afe-btn-ghost text-start"><i class="bi bi-boxes me-2"></i>Define architecture</a>{% endif %}
+                    {% if can('dataset:write') %}<a href="/datasets/new" class="btn afe-btn-ghost text-start"><i class="bi bi-database me-2"></i>Import Dataset</a>{% endif %}
+                    {% if can('training:run') %}<a href="/training" class="btn afe-btn-ghost text-start"><i class="bi bi-lightning-charge me-2"></i>Start Training</a>{% endif %}
+                    {% if can('chat:read') %}<a href="/chat" class="btn afe-btn-ghost text-start"><i class="bi bi-chat-dots me-2"></i>Open Chat</a>{% endif %}
                 </div>
             </div>
         </div>

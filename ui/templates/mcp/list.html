@@ -6,9 +6,23 @@
     <!-- Header -->
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
-            <h1 class="h4 fw-bold mb-1">Model Context Protocol (MCP) Server Registry</h1>
-            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Standardized connectors for dynamic external tool and database integration via stdio and SSE.</p>
+            <p class="text-uppercase small text-secondary mb-1">Tool connectivity</p>
+            <h1 class="h4 fw-bold mb-1">MCP Studio</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Discover and govern external tools through stdio and SSE connectors.</p>
         </div>
+    </div>
+
+    <div class="afe-card mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h2 class="h6 fw-bold mb-0"><i class="bi bi-search me-2 text-primary"></i>Discover tools</h2>
+            <span id="mcpDiscoveryStatus" class="small text-secondary">Ready</span>
+        </div>
+        <form id="mcpDiscoveryForm" class="row g-2">
+            <div class="col-lg-7"><input name="command" class="afe-input" placeholder="npx -y @modelcontextprotocol/server-filesystem" required></div>
+            <div class="col-lg-2"><select name="transport" class="afe-select"><option value="stdio">stdio</option><option value="sse">SSE</option></select></div>
+            <div class="col-lg-3"><button class="afe-btn afe-btn-primary w-100" type="submit">Discover capabilities</button></div>
+        </form>
+        <div id="mcpDiscoveryResults" class="d-flex flex-wrap gap-1 mt-3"></div>
     </div>
 
     <!-- MCP Servers Grid -->
@@ -39,4 +53,19 @@
         {% endfor %}
     </div>
 </div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.getElementById('mcpDiscoveryForm')?.addEventListener('submit', function (event) {
+    event.preventDefault();
+    const status = document.getElementById('mcpDiscoveryStatus');
+    status.textContent = 'Discovering...';
+    fetch('/mcp/discover', {method: 'POST', headers: {'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content}, body: new FormData(this)})
+        .then(response => response.json()).then(function (tools) {
+            document.getElementById('mcpDiscoveryResults').innerHTML = tools.map(tool => `<span class="afe-badge afe-badge-info"><i class="bi bi-gear-wide-connected me-1"></i>${tool.name}</span>`).join('') || '<span class="small text-secondary">No tools discovered.</span>';
+            status.textContent = `${tools.length} tools found`;
+        }).catch(() => { status.textContent = 'Discovery failed'; });
+});
+</script>
 {% endblock %}

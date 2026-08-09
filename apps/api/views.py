@@ -23,6 +23,9 @@ from core.tenancy import TenantService
 from engines.dataset.connectors import DatasetConnector
 from engines.dataset.ingestion import DatasetIngestion
 from engines.training.trainer import TrainingEngine, TrainingHyperparams
+import hashlib
+from engines.model import ArchitectureConfig, MODEL_PRESETS, ArchitectureCalculator, ArchitectureMetrics
+from engines.model import ModelExporter
 
 
 api_bp = Blueprint("api_v1", __name__, url_prefix="/api/v1")
@@ -122,41 +125,171 @@ def _page(query: Any) -> tuple[list[Any], dict[str, int]]:
     return rows, {"page": page, "per_page": per_page, "total": total}
 
 
-@api_bp.get("/datasets")
-def datasets() -> Any:
-    with get_session() as session:
-        query = TenantService.scope(session.query(Dataset), Dataset, session).order_by(Dataset.created_at.desc())
-        rows, pagination = _page(query)
-        return jsonify({"data": [_dataset_dict(row) for row in rows], "pagination": pagination})
-
-
-@api_bp.post("/datasets/import")
-def import_dataset() -> Any:
+@api_bp.post("/training")
+def launch_training() -> Any:
+    """Launch a single‑dataset pre‑training job (legacy endpoint)."""
     payload = request.get_json(silent=True) or {}
-    source_type = str(payload.get("source_type", "")).lower()
-    try:
-        if source_type == "github":
-            source = DatasetConnector.github(
-                str(payload["owner"]), str(payload["repo"]), str(payload["path"]), str(payload.get("ref", "main"))
-            )
-        elif source_type == "huggingface":
-            source = DatasetConnector.huggingface(str(payload["repo_id"]), str(payload["filename"]), str(payload.get("revision", "main")))
-        elif source_type == "kaggle":
-            source = DatasetConnector.kaggle(str(payload["dataset"]), str(payload["filename"]))
-        elif source_type == "http":
-            source = DatasetConnector.http(str(payload["url"]), payload.get("filename"))
-        else:
-            return jsonify({"error": "unsupported_source_type"}), 400
-    except KeyError as exc:
-        return jsonify({"error": "missing_source_field", "field": str(exc)}), 400
+    name = str(payload.get("name", "API Training Run")).strip()[:256]
+    hyperparams = payload.get("hyperparams", {})
+    experiment_id = str(uuid.uuid4())
+    job = TaskJob(
+        id=str(uuid.uuid4()),
+        name=name,
+        job_type=JobType.TRAINING,
+        status=JobStatus.QUEUED.value,
+        progress=0.0,
+        experiment_id=experiment_id,
+        created_by=current_user.get_id(),
+    )
+    with get_session() as session:
+        session.add(job)
+        session.flush()
+        exp = Experiment(
+            id=experiment_id,
+            name=name,
+            slug=f"{name.lower().replace(' ', '-')}-{experiment_id[:8]}",
+            run_type="pretraining",
+            model_id=payload.get("model_id"),
+            dataset_id=payload.get("dataset_id"),
+            project_id=payload.get("project_id"),
+            created_by=current_user.get_id(),
+        )
+        session.add(exp)
+        session.commit()
 
-    dataset_id = str(uuid.uuid4())
-    try:
-        storage = get_storage_backend()
-        storage_key = DatasetConnector.download_to_storage(source, storage, f"datasets/{dataset_id}")
-        samples, row_count, size_bytes = DatasetIngestion.sample_head(storage.get_url(storage_key), n=5)
-    except (OSError, ValueError, requests.RequestException) as exc:
-        return jsonify({"error": "dataset_import_failed", "detail": str(exc)}), 502
+    task_queue.submit(TrainingEngine.run_training_loop, job.id, experiment_id, hyperparams)
+    return jsonify({"job_id": job.id, "experiment_id": experiment_id}), 202
+
+
+@api_bp.post("/training/multi")
+def launch_multi_dataset_training() -> Any:
+    """Launch a pre‑training job that consumes **multiple** datasets.
+
+    The request payload must contain ``dataset_ids`` – a list of existing
+    dataset UUIDs – and optionally ``model_id`` and ``hyperparams``.  The
+    endpoint creates a single ``Experiment`` record that stores the list as a
+    JSON string in the ``hyperparameters_json`` column (so the training loop
+    can later resolve the individual datasets).
+    """
+    payload = request.get_json(silent=True) or {}
+    name = str(payload.get("name", "API Multi‑Dataset Training")).strip()[:256]
+    dataset_ids: list[str] = payload.get("dataset_ids", [])
+    if not isinstance(dataset_ids, list) or not dataset_ids:
+        return jsonify({"error": "dataset_ids must be a non‑empty list"}), 400
+    hyperparams = payload.get("hyperparams", {})
+    experiment_id = str(uuid.uuid4())
+    job = TaskJob(
+        id=str(uuid.uuid4()),
+        name=name,
+        job_type=JobType.TRAINING,
+        status=JobStatus.QUEUED.value,
+        progress=0.0,
+        experiment_id=experiment_id,
+        created_by=current_user.get_id(),
+    )
+    with get_session() as session:
+        session.add(job)
+        session.flush()
+        exp = Experiment(
+            id=experiment_id,
+            name=name,
+            slug=f"{name.lower().replace(' ', '-')}-{experiment_id[:8]}",
+            run_type="pretraining",
+            model_id=payload.get("model_id"),
+            # Store the list of dataset IDs as JSON for later resolution.
+            hyperparameters_json=json.dumps({"dataset_ids": dataset_ids}),
+            project_id=payload.get("project_id"),
+            created_by=current_user.get_id(),
+        )
+        session.add(exp)
+        session.commit()
+
+    task_queue.submit(TrainingEngine.run_training_loop, job.id, experiment_id, hyperparams)
+    return jsonify({"job_id": job.id, "experiment_id": experiment_id}), 202
+
+
+@api_bp.get("/model/metrics")
+def model_metrics() -> Any:
+    """Return analytical metrics for a given model preset.
+
+    Query parameters:
+    - ``preset`` – one of the keys in ``MODEL_PRESETS`` (e.g., ``base``).
+    """
+    preset = request.args.get("preset", "base").lower()
+    cfg: ArchitectureConfig = MODEL_PRESETS.get(preset)
+    if cfg is None:
+        return jsonify({"error": f"preset '{preset}' not found"}), 404
+    metrics: ArchitectureMetrics = ArchitectureCalculator.compute_metrics(cfg)
+    return jsonify({"preset": preset, "config": cfg.to_dict(), "metrics": metrics.to_dict()})
+
+
+@api_bp.post("/models/compile")
+def compile_model() -> Any:
+    """Compile a model definition from a preset or a custom configuration.
+
+    Expected JSON payload:
+    {
+        "name": "My Model",
+        "preset": "base"   // optional – if omitted, a full config must be provided
+        "config": { ... }   // optional – overrides the preset fields
+    }
+    The endpoint:
+    1. Resolves the final ``ArchitectureConfig``.
+    2. Stores ``config.json`` in the unified storage backend.
+    3. Generates a self‑contained ``model.py`` via ``ModelExporter`` and stores it.
+    4. Creates a ``ModelDefinition`` DB record linking the two storage keys.
+    """
+    payload = request.get_json(silent=True) or {}
+    name = str(payload.get("name", "Unnamed Model")).strip()[:256]
+    preset_key = str(payload.get("preset", "")).lower()
+    custom_cfg = payload.get("config")
+
+    # Resolve configuration
+    if preset_key and preset_key in MODEL_PRESETS:
+        base_cfg: ArchitectureConfig = MODEL_PRESETS[preset_key]
+        cfg = ArchitectureConfig.from_dict({**base_cfg.to_dict(), **(custom_cfg or {})})
+    elif custom_cfg:
+        cfg = ArchitectureConfig.from_dict(custom_cfg)
+    else:
+        return jsonify({"error": "Either a valid preset or a custom config must be provided"}), 400
+
+    # Persist config and generated code
+    storage = get_storage_backend()
+    model_id = "mdl-" + hashlib.sha256((name + cfg.name).encode()).hexdigest()[:12]
+    config_key = f"models/{model_id}/config.json"
+    code_key = f"models/{model_id}/model.py"
+    storage.write(config_key, json.dumps(cfg.to_dict(), indent=2).encode("utf-8"))
+    code_content = ModelExporter.generate_pytorch_code(cfg)
+    storage.write(code_key, code_content.encode("utf-8"))
+
+    # Create DB entry
+    with get_session() as session:
+        model_def = ModelDefinition(
+            id=model_id,
+            name=name,
+            slug=name.lower().replace(' ', '-')[:48] + f"-{model_id[:8]}",
+            description=str(payload.get("description", "")),
+            architecture_type="hybrid",
+            preset_tier=cfg.tier,
+            d_model=cfg.d_model,
+            num_layers=cfg.num_layers,
+            num_heads=cfg.num_heads,
+            num_kv_heads=cfg.num_kv_heads,
+            vocab_size=cfg.vocab_size,
+            max_seq_len=cfg.max_seq_len,
+            param_count=ArchitectureCalculator.compute_metrics(cfg).total_params,
+            vram_fp16_mb=ArchitectureCalculator.compute_metrics(cfg).training_vram_fp16_mb,
+            storage_key=config_key,
+            code_storage_key=code_key,
+            config_json=json.dumps(cfg.to_dict()),
+            status="ready",
+            project_id=payload.get("project_id"),
+            created_by=current_user.get_id(),
+        )
+        session.add(model_def)
+        session.commit()
+
+    return jsonify({"model_id": model_id, "config_key": config_key, "code_key": code_key}), 201
 
     with get_session() as session:
         row = Dataset(
@@ -220,8 +353,17 @@ def experiment(experiment_id: str) -> Any:
         return jsonify({"data": _experiment_dict(row)})
 
 
-@api_bp.post("/training")
-def launch_training() -> Any:
+# NOTE: The original ``launch_training`` endpoint conflicted with an earlier
+# definition (legacy endpoint). To avoid Flask ``AssertionError`` about duplicate
+# view functions, this newer implementation is renamed and exposed under a
+# distinct URL.
+@api_bp.post("/training/v2")
+def launch_training_v2() -> Any:
+    """Launch a training job (v2) – newer API version.
+
+    Accepts a JSON payload with ``name`` and optional ``hyperparams``. Returns
+    the created ``experiment_id`` and ``job_id``.
+    """
     payload = request.get_json(silent=True) or {}
     name = str(payload.get("name", "API Training Run")).strip()[:256]
     if not name:

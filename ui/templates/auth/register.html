@@ -2,20 +2,15 @@
 {% block title %}Create account - AI Foundry Enterprise{% endblock %}
 {% block content %}
 <div class="container py-5" style="max-width: 460px;">
-    <div class="afe-card p-4">
-        <h1 class="h4 mb-1">Create account</h1>
+    {% call components.card(title='Create account') %}
         <p class="text-secondary mb-4">The first account becomes the local administrator.</p>
-        <form method="post">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <label class="form-label">Username</label>
-            <input class="form-control mb-3" name="username" minlength="3" autocomplete="username" required>
-            <label class="form-label">Email</label>
-            <input class="form-control mb-3" type="email" name="email" autocomplete="email" required>
-            <label class="form-label">Password</label>
-            <input class="form-control mb-4" type="password" name="password" minlength="12" autocomplete="new-password" required>
-            <button class="btn afe-btn-primary w-100" type="submit">Create account</button>
-        </form>
+        {% call components.form(method='post', action=url_for('auth.register'), aria_label='Create account') %}
+            {{ components.form_field('Username', name='username', minlength='3', autocomplete='username', required=True) }}
+            {{ components.form_field('Email', type='email', name='email', autocomplete='email', required=True) }}
+            {{ components.form_field('Password', type='password', name='password', minlength='12', autocomplete='new-password', required=True) }}
+            {{ components.button('Create account', type='submit', variant='primary', size='md', class='w-100') }}
+        {% endcall %}
         <p class="text-secondary small mt-4 mb-0">Already registered? <a href="{{ url_for('auth.login') }}">Sign in</a></p>
-    </div>
+    {% endcall %}
 </div>
 {% endblock %}

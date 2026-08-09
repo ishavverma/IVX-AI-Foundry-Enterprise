@@ -12,8 +12,7 @@
     </div>
 
     <div class="afe-card">
-        <form method="POST" action="/evaluation/new">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% call components.form(method='post', action='/evaluation/new', aria_label='Run evaluation benchmark') %}
             <div class="mb-3">
                 <label class="form-label small fw-bold">Benchmark Suite</label>
                 <select name="benchmark_name" class="form-select">
@@ -40,7 +39,7 @@
                 <a href="/evaluation" class="btn afe-btn-ghost">Cancel</a>
                 <button type="submit" class="btn afe-btn-primary"><i class="bi bi-play-fill me-1"></i>Start Benchmark</button>
             </div>
-        </form>
+        {% endcall %}
     </div>
 </div>
 {% endblock %}

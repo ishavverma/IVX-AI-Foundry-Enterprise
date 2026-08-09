@@ -90,6 +90,40 @@ flask run --reload
 
 Open your browser at `http://localhost:5000` – you will see the dashboard with navigation links to **Model Factory**, **Datasets**, **Training**, etc.
 
+## UI Redesign – Phase 1 (Foundations)
+
+The **Phase 1 UI redesign** focuses on security, accessibility, and a component‑first architecture.
+
+### Highlights
+
+* **Security hardening** – Content‑Security‑Policy, HSTS, Referrer‑Policy, Permissions‑Policy, and `SESSION_COOKIE_SECURE` are now set in `app.py`.
+* **Global CSS reset** – `normalize.css` is loaded via CDN.
+* **Utility‑first styling** – Tailwind CSS is included via CDN for rapid UI prototyping.
+* **Component library** – Reusable Jinja macros live in `ui/templates/_components.html` (buttons, cards, tables, forms, modals, toasts, pagination, badges, avatars, progress bars, and a `form` macro that automatically injects the CSRF token).
+* **Template refactor** – Core templates (`auth/login.html`, `auth/register.html`, `agents/new.html`, `admin/users.html`, `datasets/new.html`, etc.) now use the component macros for consistent markup, ARIA labels, and client‑side validation.
+* **Dark‑mode toggle** – Persisted via `localStorage` and toggled with the theme button in the navbar.
+
+### Building the UI
+
+Phase 2 uses a local Tailwind build so production pages do not depend on a CDN:
+
+```bash
+npm install
+npm run build:css
+```
+
+Run `npm run watch:css` during template work. The generated `ui/static/css/tailwind.css` is intentionally a build artifact and should be produced as part of deployment or CI.
+
+### Testing
+
+Added a basic Flask test (`tests/test_ui_security.py`) that verifies the presence of the CSRF hidden input on forms and checks that security headers are present in responses.
+
+Run the UI tests with:
+
+```bash
+pytest tests/test_ui_security.py -q
+```
+
 ---
 
 ## Key Components

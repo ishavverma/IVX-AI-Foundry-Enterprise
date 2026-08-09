@@ -1,230 +1,135 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="AI Foundry Enterprise — An integrated AI operating platform for the full lifecycle of foundation models.">
+    <meta name="description" content="AI Foundry Enterprise — an integrated AI operating platform.">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}AI Foundry Enterprise{% endblock %}</title>
-
-    <!-- Google Fonts -->
+    <script>
+        (function () {
+            const saved = localStorage.getItem('afe-theme');
+            const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.documentElement.dataset.theme = saved || (systemDark ? 'dark' : 'light');
+        }());
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-
-    <!-- Bootstrap 5 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
+    <!-- Normalize.css for CSS reset -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css" rel="stylesheet" integrity="sha512-oH0v8bKX0+K6V+g6VbUeJ8V+RaHcRUW2KIiMzZLr0X58F3RDeo63eVUsVTNff7kwh28ykVZCENKz7LkKk5X7xg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-
-    <!-- AFE Platform Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='design/tokens.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/platform.css') }}">
-
     {% block head_extra %}{% endblock %}
 </head>
 <body>
-    <!-- ═══════════════════════════════════════════ -->
-    <!-- TOP NAVBAR                                  -->
-    <!-- ═══════════════════════════════════════════ -->
-    <nav class="navbar navbar-expand-lg afe-navbar sticky-top">
-        <div class="container-fluid px-3">
-            <!-- Brand -->
-            <a class="navbar-brand d-flex align-items-center gap-2" href="/">
-                <span class="afe-logo-icon">
-                    <i class="bi bi-stars"></i>
-                </span>
-                <span class="afe-brand-text">AI Foundry <span class="afe-brand-accent">Enterprise</span></span>
-            </a>
-
-            <!-- Search -->
-            <div class="afe-search-wrapper d-none d-lg-flex mx-auto">
-                <div class="afe-search-box">
-                    <i class="bi bi-search"></i>
-                    <input type="text" placeholder="Search models, datasets, experiments…" id="globalSearch">
-                    <kbd>⌘K</kbd>
-                </div>
+<a class="afe-skip-link" href="#main-content">Skip to main content</a>
+<div class="afe-shell">
+    <aside class="afe-sidebar" id="sidebar" aria-label="Primary navigation">
+        <a class="afe-sidebar-brand" href="/">
+            <span class="afe-logo-icon"><i class="bi bi-stars"></i></span>
+            <span class="afe-brand-text">AI Foundry <span style="color: var(--color-accent-400);">Enterprise</span></span>
+        </a>
+        <nav class="afe-sidebar-nav" aria-label="Workspace sections">
+            <div class="afe-nav-section">
+                <span class="afe-nav-section-title">Workspace</span>
+                {% if can('dashboard:read') %}<a href="/" class="afe-nav-link {% if request.path == '/' %}active{% endif %}"><i class="bi bi-grid-1x2"></i><span>Overview</span></a>{% endif %}
+                {% if can('project:read') %}<a href="/projects" class="afe-nav-link"><i class="bi bi-folder2"></i><span>Projects</span></a>{% endif %}
+                {% if can('org:read') %}<a href="/organizations" class="afe-nav-link"><i class="bi bi-building"></i><span>Organizations</span></a>{% endif %}
             </div>
+            <div class="afe-nav-section">
+                <span class="afe-nav-section-title">Build</span>
+                {% if can('model:read') %}<a href="/models" class="afe-nav-link {% if request.path.startswith('/models') %}active{% endif %}"><i class="bi bi-boxes"></i><span>Model Factory</span></a>{% endif %}
+                {% if can('dataset:read') %}<a href="/datasets" class="afe-nav-link {% if request.path.startswith('/datasets') %}active{% endif %}"><i class="bi bi-database"></i><span>Datasets</span></a>{% endif %}
+                {% if can('model:read') %}<a href="/tokenizer" class="afe-nav-link"><i class="bi bi-type"></i><span>Tokenizer Studio</span></a>{% endif %}
+                {% if can('model:read') %}<a href="/registry" class="afe-nav-link"><i class="bi bi-archive"></i><span>Registry</span></a>{% endif %}
+            </div>
+            <div class="afe-nav-section">
+                <span class="afe-nav-section-title">Operate</span>
+                {% if can('training:read') %}<a href="/training" class="afe-nav-link"><i class="bi bi-lightning-charge"></i><span>Training</span></a>{% endif %}
+                {% if can('eval:read') %}<a href="/evaluation" class="afe-nav-link"><i class="bi bi-clipboard-data"></i><span>Evaluation</span></a>{% endif %}
+                {% if can('inference:read') %}<a href="/inference" class="afe-nav-link"><i class="bi bi-play-circle"></i><span>Inference</span></a>{% endif %}
+                {% if can('monitoring:read') %}<a href="/monitoring" class="afe-nav-link"><i class="bi bi-activity"></i><span>Monitoring</span></a>{% endif %}
+            </div>
+            <div class="afe-nav-section">
+                <span class="afe-nav-section-title">Studio</span>
+                {% if can('chat:read') %}<a href="/chat" class="afe-nav-link"><i class="bi bi-chat-dots"></i><span>Chat Studio</span></a>{% endif %}
+                {% if can('agent:read') %}<a href="/agents" class="afe-nav-link"><i class="bi bi-robot"></i><span>Agent Studio</span></a>{% endif %}
+                {% if can('mcp:read') %}<a href="/mcp" class="afe-nav-link"><i class="bi bi-plug"></i><span>MCP Studio</span></a>{% endif %}
+                {% if can('marketplace:read') %}<a href="/marketplace" class="afe-nav-link"><i class="bi bi-shop"></i><span>Marketplace</span></a>{% endif %}
+            </div>
+            {% if can('admin:users') or can('admin:settings') %}
+            <div class="afe-nav-section">
+                <span class="afe-nav-section-title">Administration</span>
+                {% if can('admin:users') %}<a href="/admin/users" class="afe-nav-link"><i class="bi bi-shield-lock"></i><span>Users & Roles</span></a>{% endif %}
+                {% if can('admin:settings') %}<a href="/settings" class="afe-nav-link"><i class="bi bi-gear"></i><span>Settings</span></a>{% endif %}
+            </div>
+            {% endif %}
+        </nav>
+    </aside>
 
-            <!-- Right controls -->
-            <div class="d-flex align-items-center gap-3">
-                <!-- Theme toggle -->
-                <button class="btn btn-sm afe-icon-btn" id="themeToggle" title="Toggle theme">
-                    <i class="bi bi-moon-stars-fill"></i>
-                </button>
-
-                <!-- Notifications -->
-                <button class="btn btn-sm afe-icon-btn position-relative" title="Notifications">
-                    <i class="bi bi-bell"></i>
-                    <span class="afe-notification-badge">3</span>
-                </button>
-
-                <!-- GPU Status -->
-                <div class="afe-gpu-indicator d-none d-md-flex">
-                    <i class="bi bi-gpu-card"></i>
-                    <span class="afe-gpu-label">GPU</span>
-                    <span class="afe-gpu-status afe-status-ok">●</span>
-                </div>
-
-                <!-- User -->
+    <div class="afe-main">
+        <header class="afe-navbar">
+            <button class="afe-navbar-toggle" id="sidebarToggle" type="button" aria-label="Toggle navigation" aria-controls="sidebar"><i class="bi bi-layout-sidebar"></i></button>
+            <div class="afe-search-wrapper">
+                <label class="afe-search-box" for="globalSearch"><i class="bi bi-search"></i><input id="globalSearch" type="search" placeholder="Search workspace..." aria-label="Search workspace"><kbd>Ctrl K</kbd></label>
+            </div>
+            <div class="afe-navbar-actions ms-auto">
+                <button class="afe-icon-btn" id="themeToggle" type="button" title="Toggle theme" aria-label="Toggle theme"><i class="bi bi-sun"></i></button>
+                {% if current_user.is_authenticated %}
+                <button class="afe-icon-btn" type="button" title="Notifications" aria-label="Notifications"><i class="bi bi-bell"></i><span class="afe-notification-badge">3</span></button>
                 <div class="dropdown">
-                    <button class="btn btn-sm afe-avatar-btn dropdown-toggle" data-bs-toggle="dropdown">
-                        <div class="afe-avatar">A</div>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end afe-dropdown">
-                        <li><a class="dropdown-item" href="/settings"><i class="bi bi-gear me-2"></i>Settings</a></li>
-                        {% if can_manage_users %}<li><a class="dropdown-item" href="{{ url_for('admin.users') }}"><i class="bi bi-shield-lock me-2"></i>Administration</a></li>{% endif %}
+                    <button class="afe-avatar-btn dropdown-toggle" data-bs-toggle="dropdown" aria-label="Open account menu"><span class="afe-avatar">{{ (current_user.display_name or current_user.username or 'U')[0] | upper }}</span></button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><h6 class="dropdown-header">{{ current_user.display_name or current_user.username }}</h6></li>
+                        {% if can('admin:settings') %}<li><a class="dropdown-item" href="/settings"><i class="bi bi-gear me-2"></i>Settings</a></li>{% endif %}
                         <li><hr class="dropdown-divider"></li>
-                        <li><form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="dropdown-item text-danger" type="submit"><i class="bi bi-box-arrow-right me-2"></i>Logout</button></form></li>
+                        <li>{% call components.form(method='post', action=url_for('auth.logout'), aria_label='Sign out') %}<button class="dropdown-item text-danger" type="submit"><i class="bi bi-box-arrow-right me-2"></i>Sign out</button>{% endcall %}</li>
                     </ul>
                 </div>
-            </div>
-        </div>
-    </nav>
-
-    <div class="d-flex">
-        <!-- ═══════════════════════════════════════ -->
-        <!-- SIDEBAR                                 -->
-        <!-- ═══════════════════════════════════════ -->
-        <aside class="afe-sidebar" id="sidebar">
-            <nav class="afe-sidebar-nav">
-                <!-- Platform -->
-                <div class="afe-nav-section">
-                    <span class="afe-nav-section-title">Platform</span>
-                    <a href="/" class="afe-nav-link {% if request.path == '/' %}active{% endif %}">
-                        <i class="bi bi-grid-1x2"></i><span>Dashboard</span>
-                    </a>
-                    <a href="/projects" class="afe-nav-link">
-                        <i class="bi bi-folder2"></i><span>Projects</span>
-                    </a>
-                    <a href="/organizations" class="afe-nav-link">
-                        <i class="bi bi-building"></i><span>Organizations</span>
-                    </a>
-                </div>
-
-                <!-- Model Factory -->
-                <div class="afe-nav-section">
-                    <span class="afe-nav-section-title">Model Factory</span>
-                    <a href="/models" class="afe-nav-link {% if request.path.startswith('/models') %}active{% endif %}">
-                        <i class="bi bi-boxes"></i><span>Architecture workspace</span>
-                    </a>
-                    <a href="/datasets" class="afe-nav-link">
-                        <i class="bi bi-database"></i><span>Datasets</span>
-                    </a>
-                    <a href="/datasets/pretrain" class="afe-nav-link ms-3">
-                        <i class="bi bi-cloud-download"></i><span>Pre‑train Datasets</span>
-                    </a>
-                    <a href="/tokenizer" class="afe-nav-link">
-                        <i class="bi bi-type"></i><span>Tokenizer Studio</span>
-                    </a>
-                    <a href="/registry" class="afe-nav-link">
-                        <i class="bi bi-archive"></i><span>Registry</span>
-                    </a>
-                </div>
-
-                <!-- Training -->
-                <div class="afe-nav-section">
-                    <span class="afe-nav-section-title">Training</span>
-                    <a href="/training" class="afe-nav-link">
-                        <i class="bi bi-lightning-charge"></i><span>Training</span>
-                    </a>
-                    <a href="/finetuning" class="afe-nav-link">
-                        <i class="bi bi-sliders2"></i><span>Fine-Tuning</span>
-                    </a>
-                    <a href="/checkpoints" class="afe-nav-link">
-                        <i class="bi bi-save"></i><span>Checkpoints</span>
-                    </a>
-                    <a href="/evaluation" class="afe-nav-link">
-                        <i class="bi bi-clipboard-data"></i><span>Evaluation</span>
-                    </a>
-                </div>
-
-                <!-- AI Studio -->
-                <div class="afe-nav-section">
-                    <span class="afe-nav-section-title">AI Studio</span>
-                    <a href="/inference" class="afe-nav-link">
-                        <i class="bi bi-play-circle"></i><span>Inference</span>
-                    </a>
-                    <a href="/chat" class="afe-nav-link">
-                        <i class="bi bi-chat-dots"></i><span>Chat Studio</span>
-                    </a>
-                    <a href="/prompts" class="afe-nav-link">
-                        <i class="bi bi-pencil-square"></i><span>Prompt Studio</span>
-                    </a>
-                    <a href="/agents" class="afe-nav-link">
-                        <i class="bi bi-robot"></i><span>Agent Studio</span>
-                    </a>
-                    <a href="/mcp" class="afe-nav-link">
-                        <i class="bi bi-plug"></i><span>MCP Studio</span>
-                    </a>
-                </div>
-
-                <!-- Operations -->
-                <div class="afe-nav-section">
-                    <span class="afe-nav-section-title">Operations</span>
-                    {% if can_manage_users %}
-                    <a href="{{ url_for('admin.users') }}" class="afe-nav-link {% if request.path.startswith('/admin') %}active{% endif %}">
-                        <i class="bi bi-shield-lock"></i><span>Administration</span>
-                    </a>
-                    {% endif %}
-                    <a href="/monitoring" class="afe-nav-link">
-                        <i class="bi bi-activity"></i><span>Monitoring</span>
-                    </a>
-                    <a href="/jobs" class="afe-nav-link">
-                        <i class="bi bi-list-task"></i><span>Jobs</span>
-                    </a>
-                    <a href="/settings" class="afe-nav-link">
-                        <i class="bi bi-gear"></i><span>Settings</span>
-                    </a>
-                </div>
-            </nav>
-        </aside>
-
-        <!-- ═══════════════════════════════════════ -->
-        <!-- MAIN CONTENT                            -->
-        <!-- ═══════════════════════════════════════ -->
-        <main class="afe-main">
-            <!-- Flash messages -->
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }} alert-dismissible fade show mx-4 mt-3" role="alert">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    {% endfor %}
                 {% endif %}
-            {% endwith %}
+            </div>
+        </header>
 
+        <main class="afe-content" id="main-content" tabindex="-1">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% for category, message in messages %}<div class="afe-alert afe-alert-{{ category }}" role="alert">{{ message }}</div>{% endfor %}
+            {% endwith %}
             {% block content %}{% endblock %}
         </main>
     </div>
-
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Alpine.js -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
-    <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@2.0.3"></script>
-
-    <!-- Theme toggle script -->
-    <script>
-        const themeToggle = document.getElementById('themeToggle');
-        const html = document.documentElement;
-        const icon = themeToggle.querySelector('i');
-
-        // Load saved theme
-        const savedTheme = localStorage.getItem('afe-theme') || 'dark';
-        html.setAttribute('data-bs-theme', savedTheme);
-        icon.className = savedTheme === 'dark' ? 'bi bi-moon-stars-fill' : 'bi bi-sun-fill';
-
-        themeToggle.addEventListener('click', () => {
-            const current = html.getAttribute('data-bs-theme');
-            const next = current === 'dark' ? 'light' : 'dark';
-            html.setAttribute('data-bs-theme', next);
-            localStorage.setItem('afe-theme', next);
-            icon.className = next === 'dark' ? 'bi bi-moon-stars-fill' : 'bi bi-sun-fill';
-        });
-    </script>
-
-    {% block scripts_extra %}{% endblock %}
+</div>
+{% import "_components.html" as components %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<script>
+(function () {
+    const root = document.documentElement;
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const themeToggle = document.getElementById('themeToggle');
+    sidebarToggle?.addEventListener('click', function () {
+        if (window.innerWidth <= 992) sidebar.classList.toggle('open');
+        else sidebar.classList.toggle('collapsed');
+    });
+    themeToggle?.addEventListener('click', function () {
+        const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+        root.dataset.theme = next;
+        localStorage.setItem('afe-theme', next);
+        themeToggle.querySelector('i').className = next === 'dark' ? 'bi bi-sun' : 'bi bi-moon-stars';
+    });
+    document.addEventListener('keydown', function (event) {
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+            event.preventDefault();
+            document.getElementById('globalSearch')?.focus();
+        }
+    });
+}());
+</script>
+{% block scripts_extra %}{% endblock %}
+{% block scripts %}{% endblock %}
 </body>
 </html>

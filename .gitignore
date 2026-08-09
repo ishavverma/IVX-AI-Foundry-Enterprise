@@ -62,3 +62,5 @@ htmlcov/
 roadmap.txt
 *.pdf
 .github/
+storage/
+docs/

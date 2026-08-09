@@ -163,3 +163,26 @@ def detail_experiment(experiment_id: str):
         }
 
     return render_template("training/detail.html", experiment=exp_data)
+
+
+@training_bp.route("/<experiment_id>/api/live")
+def live_experiment(experiment_id: str):
+    """Return the latest training state for polling clients."""
+    with get_session() as session:
+        exp = TenantService.scope(
+            session.query(Experiment).filter(Experiment.id == experiment_id),
+            Experiment,
+            session,
+        ).first()
+        if not exp:
+            return jsonify({"error": "Experiment not found"}), 404
+        return jsonify({
+            "status": exp.status,
+            "current_step": exp.current_step,
+            "max_steps": exp.max_steps,
+            "current_loss": exp.current_loss,
+            "best_loss": exp.best_loss,
+            "total_tokens": exp.total_tokens_trained,
+            "tokens_per_sec": exp.tokens_per_second,
+            "history": json.loads(exp.metrics_history_json or "[]"),
+        })

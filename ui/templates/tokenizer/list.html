@@ -6,10 +6,17 @@
     <!-- Header -->
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
+            <p class="text-uppercase small text-secondary mb-1">Language assets</p>
             <h1 class="h4 fw-bold mb-1">Tokenizer Studio</h1>
-            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Train, inspect, test, and export BPE, Byte-Level, and Unigram tokenizers.</p>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Train, inspect, test, and export domain-aware vocabularies.</p>
         </div>
         <a href="/tokenizer/new" class="btn afe-btn-primary"><i class="bi bi-cpu me-1"></i>Train Tokenizer</a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-sm-4"><div class="afe-stat-card"><div class="afe-stat-value">{{ tokenizers | length }}</div><div class="afe-stat-label">Tokenizer assets</div></div></div>
+        <div class="col-sm-4"><div class="afe-stat-card"><div class="afe-stat-value text-info">{% if tokenizers %}{{ (tokenizers | map(attribute='vocab_size') | sum) }}{% else %}0{% endif %}</div><div class="afe-stat-label">Vocabulary entries</div></div></div>
+        <div class="col-sm-4"><div class="afe-stat-card"><div class="afe-stat-value text-success">{{ tokenizers | selectattr('status', 'equalto', 'ready') | list | length }}</div><div class="afe-stat-label">Ready exports</div></div></div>
     </div>
 
     <!-- Tokenizers Table -->

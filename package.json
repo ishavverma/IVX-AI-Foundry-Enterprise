@@ -1,0 +1,13 @@
+{
+  "name": "ivx-ui",
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -i ./ui/static/css/tailwind.input.css -o ./ui/static/css/tailwind.css --minify",
+    "watch:css": "tailwindcss -i ./ui/static/css/tailwind.input.css -o ./ui/static/css/tailwind.css --watch"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.41",
+    "tailwindcss": "^3.4.10"
+  }
+}

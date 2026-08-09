@@ -12,8 +12,7 @@
     </div>
 
     <div class="afe-card">
-        <form method="POST" action="/prompts/new">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% call components.form(method='post', action='/prompts/new', aria_label='Create prompt template') %}
             <div class="mb-3">
                 <label class="form-label small fw-bold">Template Name</label>
                 <input type="text" name="name" class="form-control" placeholder="e.g. Code Review & Refactor Assistant" required>
@@ -38,7 +37,7 @@
                 <a href="/prompts" class="btn afe-btn-ghost">Cancel</a>
                 <button type="submit" class="btn afe-btn-primary"><i class="bi bi-check2 me-1"></i>Save Prompt Template</button>
             </div>
-        </form>
+        {% endcall %}
     </div>
 </div>
 {% endblock %}

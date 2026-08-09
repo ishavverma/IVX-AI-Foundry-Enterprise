@@ -6,10 +6,17 @@
     <!-- Header -->
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
-            <h1 class="h4 fw-bold mb-1">Dataset Management</h1>
-            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Curate, clean, deduplicate, and prepare high-quality token streams.</p>
+            <p class="text-uppercase small text-secondary mb-1">Corpus workspace</p>
+            <h1 class="h4 fw-bold mb-1">Dataset Studio</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Ingest, validate, clean, and prepare high-quality token streams.</p>
         </div>
         <a href="/datasets/new" class="btn afe-btn-primary"><i class="bi bi-cloud-upload me-1"></i>Import Dataset</a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-sm-4"><div class="afe-stat-card"><div class="afe-stat-value">{{ datasets | length }}</div><div class="afe-stat-label">Managed datasets</div></div></div>
+        <div class="col-sm-4"><div class="afe-stat-card"><div class="afe-stat-value text-success">{{ datasets | selectattr('status', 'equalto', 'ready') | list | length }}</div><div class="afe-stat-label">Ready for training</div></div></div>
+        <div class="col-sm-4"><div class="afe-stat-card"><div class="afe-stat-value text-warning">{{ datasets | selectattr('status', 'equalto', 'processing') | list | length }}</div><div class="afe-stat-label">Pipelines running</div></div></div>
     </div>
 
     <!-- Datasets Table -->

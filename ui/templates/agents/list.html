@@ -6,8 +6,9 @@
     <!-- Header -->
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
+            <p class="text-uppercase small text-secondary mb-1">Reasoning workspace</p>
             <h1 class="h4 fw-bold mb-1">Autonomous Agent Studio</h1>
-            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Build multi-turn tool-calling ReAct agents connected to local Python sandboxes and remote MCP servers.</p>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Build, inspect, and test tool-calling ReAct agents.</p>
         </div>
         <a href="/agents/new" class="btn afe-btn-primary"><i class="bi bi-robot me-1"></i>New Agent</a>
     </div>
@@ -30,6 +31,7 @@
                 <div class="pt-2 border-top border-secondary-subtle small text-secondary">
                     Model: <strong class="text-accent">{{ a.model }}</strong>
                 </div>
+                <button type="button" class="btn afe-btn-secondary btn-sm w-100 mt-3 agent-run-button" data-instructions="{{ a.role }}">Test agent <i class="bi bi-play ms-1"></i></button>
             </div>
         </div>
         {% else %}
@@ -39,5 +41,39 @@
         </div>
         {% endfor %}
     </div>
+
+        <div class="afe-card mt-4" id="agentRunner" hidden>
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h2 class="h6 fw-bold mb-0"><i class="bi bi-terminal me-2 text-primary"></i>Agent Test Run</h2>
+                <button type="button" class="afe-icon-btn" id="closeAgentRunner" aria-label="Close agent runner"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="row g-2">
+                <div class="col-lg-9"><input id="agentPrompt" class="afe-input" placeholder="Give the selected agent a task..."></div>
+                <div class="col-lg-3"><button id="runAgent" type="button" class="afe-btn afe-btn-primary w-100">Run task</button></div>
+            </div>
+            <pre id="agentOutput" class="mt-3 mb-0 p-3 rounded" style="background: var(--bg-app); color: var(--text-secondary); min-height: 100px; white-space: pre-wrap;">Select an agent to begin.</pre>
+        </div>
 </div>
 {% endblock %}
+
+    {% block scripts_extra %}
+    <script>
+    let selectedAgentInstructions = '';
+    document.querySelectorAll('.agent-run-button').forEach(function (button) {
+        button.addEventListener('click', function () {
+            selectedAgentInstructions = this.dataset.instructions;
+            document.getElementById('agentRunner').hidden = false;
+            document.getElementById('agentPrompt').focus();
+        });
+    });
+    document.getElementById('runAgent')?.addEventListener('click', function () {
+        const prompt = document.getElementById('agentPrompt').value.trim();
+        if (!prompt) return;
+        const output = document.getElementById('agentOutput');
+        output.textContent = 'Running agent...';
+        fetch('/agents/run', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content}, body: JSON.stringify({prompt: prompt, instructions: selectedAgentInstructions})})
+            .then(response => response.json()).then(data => { output.textContent = data.final_answer || data.error || 'No result returned.'; }).catch(() => { output.textContent = 'Agent execution failed.'; });
+    });
+    document.getElementById('closeAgentRunner')?.addEventListener('click', function () { document.getElementById('agentRunner').hidden = true; });
+    </script>
+    {% endblock %}

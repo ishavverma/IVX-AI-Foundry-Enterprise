@@ -6,9 +6,16 @@
     <!-- Header -->
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
-            <h1 class="h4 fw-bold mb-1">Model Checkpoints & Weights Manager</h1>
-            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Manage safetensors shards, execute post-training quantization (GPTQ / AWQ), and export to GGUF / ONNX.</p>
+            <p class="text-uppercase small text-secondary mb-1">Weight operations</p>
+            <h1 class="h4 fw-bold mb-1">Checkpoints & Weights</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Inspect, quantize, and export versioned training artifacts.</p>
         </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-sm-4"><div class="afe-stat-card"><div class="afe-stat-value">{{ checkpoints | length }}</div><div class="afe-stat-label">Saved checkpoints</div></div></div>
+        <div class="col-sm-4"><div class="afe-stat-card"><div class="afe-stat-value text-success">{{ checkpoints | selectattr('is_best') | list | length }}</div><div class="afe-stat-label">Best weights</div></div></div>
+        <div class="col-sm-4"><div class="afe-stat-card"><div class="afe-stat-value text-info">{{ (checkpoints | map(attribute='size_mb') | sum) | round(1) }} MB</div><div class="afe-stat-label">Total storage</div></div></div>
     </div>
 
     <!-- Checkpoints Table -->
@@ -29,7 +36,7 @@
                 {% for c in checkpoints %}
                 <tr>
                     <td class="fw-semibold text-light">
-                        <i class="bi bi-save me-2 text-warning"></i>{{ c.name }}
+                        <button type="button" class="btn btn-link p-0 fw-semibold text-start text-decoration-none text-primary checkpoint-inspect" data-checkpoint-id="{{ c.id }}"><i class="bi bi-save me-2 text-warning"></i>{{ c.name }}</button>
                         {% if c.is_best %}<span class="badge bg-success ms-1">BEST</span>{% endif %}
                     </td>
                     <td class="font-monospace">{{ c.step }}</td>
@@ -40,16 +47,14 @@
                     <td>
                         <div class="d-flex gap-2">
                             <!-- Quantize trigger -->
-                            <form method="POST" action="/checkpoints/{{ c.id }}/quantize" class="d-inline">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            {% call components.form(method='post', action='/checkpoints/' ~ c.id ~ '/quantize', aria_label='Quantize checkpoint', class='d-inline') %}
                                 <input type="hidden" name="quantization_type" value="int4">
                                 <button type="submit" class="btn btn-sm afe-btn-ghost" title="Quantize to INT4">INT4</button>
-                            </form>
+                            {% endcall %}
                             <!-- GGUF export -->
-                            <form method="POST" action="/checkpoints/{{ c.id }}/export/gguf" class="d-inline">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            {% call components.form(method='post', action='/checkpoints/' ~ c.id ~ '/export/gguf', aria_label='Export checkpoint', class='d-inline') %}
                                 <button type="submit" class="btn btn-sm afe-btn-ghost" title="Export to GGUF"><i class="bi bi-file-earmark-code me-1"></i>GGUF</button>
-                            </form>
+                            {% endcall %}
                         </div>
                     </td>
                 </tr>
@@ -64,5 +69,29 @@
             </tbody>
         </table>
     </div>
+
+    <div class="afe-card mt-4" id="checkpointInspector" hidden>
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h2 class="h6 fw-bold mb-0"><i class="bi bi-search me-2 text-primary"></i>Checkpoint Inspector</h2>
+            <button type="button" class="afe-icon-btn" id="closeInspector" aria-label="Close checkpoint inspector"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="row g-3 small" id="checkpointInspectorBody"></div>
+    </div>
 </div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.querySelectorAll('.checkpoint-inspect').forEach(function (button) {
+    button.addEventListener('click', function () {
+        fetch(`/checkpoints/${this.dataset.checkpointId}/api/inspect`).then(response => response.json()).then(function (data) {
+            const body = document.getElementById('checkpointInspectorBody');
+            body.innerHTML = Object.entries(data).map(([key, value]) => `<div class="col-sm-6 col-lg-3"><div class="text-secondary">${key.replaceAll('_', ' ')}</div><div class="font-monospace fw-semibold text-break">${value ?? '—'}</div></div>`).join('');
+            document.getElementById('checkpointInspector').hidden = false;
+            document.getElementById('checkpointInspector').scrollIntoView({behavior: 'smooth', block: 'nearest'});
+        });
+    });
+});
+document.getElementById('closeInspector')?.addEventListener('click', function () { document.getElementById('checkpointInspector').hidden = true; });
+</script>
 {% endblock %}

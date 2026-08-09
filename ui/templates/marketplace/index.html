@@ -6,21 +6,27 @@
     <!-- Header -->
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
-            <h1 class="h4 fw-bold mb-1">Community Hub & Marketplace</h1>
-            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Discover and import pre-built fine-tuned adapters, domain recipes, and community models.</p>
+            <p class="text-uppercase small text-secondary mb-1">Community assets</p>
+            <h1 class="h4 fw-bold mb-1">Marketplace</h1>
+            <p class="text-secondary mb-0" style="font-size: 0.85rem;">Discover verified adapters, domain recipes, and community models.</p>
         </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mb-4" role="toolbar" aria-label="Filter marketplace recipes">
+        <button class="afe-btn afe-btn-primary marketplace-filter" data-tag="all" type="button">All</button>
+        {% for tag in ['coding', 'healthcare', 'finance', 'safety', 'long-context'] %}<button class="afe-btn afe-btn-secondary marketplace-filter" data-tag="{{ tag }}" type="button">{{ tag }}</button>{% endfor %}
     </div>
 
     <!-- Recipes Grid -->
     <div class="row g-3">
         {% for r in recipes %}
         <div class="col-md-6 col-xl-4">
-            <div class="afe-card h-100 d-flex flex-column">
+            <div class="afe-card h-100 d-flex flex-column marketplace-recipe" data-tags="{{ r.tags | join(' ') }}">
                 <div class="d-flex align-items-center justify-content-between mb-2">
                     <span class="afe-badge afe-badge-info">{{ r.tier }}</span>
                     <span class="small text-secondary"><i class="bi bi-download me-1"></i>{{ r.downloads }}</span>
                 </div>
-                <h2 class="h6 fw-bold text-light mb-1">{{ r.title }}</h2>
+                <h2 class="h6 fw-bold text-light mb-1"><a href="/marketplace/{{ r.id }}" class="text-decoration-none">{{ r.title }}</a></h2>
                 <div class="small text-secondary mb-2">By <strong class="text-light">{{ r.author }}</strong></div>
                 <p class="text-secondary small flex-grow-1 mb-3">{{ r.description }}</p>
                 <div class="d-flex flex-wrap gap-1 mb-3">
@@ -28,13 +34,25 @@
                         <span class="afe-badge afe-badge-ghost small" style="font-size: 0.7rem;">#{{ tag }}</span>
                     {% endfor %}
                 </div>
-                <form method="POST" action="/marketplace/install/{{ r.id }}" class="mt-auto">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn afe-btn-primary w-100 btn-sm"><i class="bi bi-cloud-arrow-down me-1"></i>Import Adapter</button>
-                </form>
+                {% call components.form(method='post', action='/marketplace/install/' ~ r.id, aria_label='Install recipe', class='mt-auto') %}
+                    <div class="d-flex gap-2"><a href="/marketplace/{{ r.id }}" class="btn afe-btn-secondary w-50 btn-sm">Details</a><button type="submit" class="btn afe-btn-primary w-50 btn-sm"><i class="bi bi-cloud-arrow-down me-1"></i>Import</button></div>
+                {% endcall %}
             </div>
         </div>
         {% endfor %}
     </div>
 </div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.querySelectorAll('.marketplace-filter').forEach(function (button) {
+    button.addEventListener('click', function () {
+        document.querySelectorAll('.marketplace-filter').forEach(item => item.classList.replace('afe-btn-primary', 'afe-btn-secondary'));
+        this.classList.replace('afe-btn-secondary', 'afe-btn-primary');
+        const tag = this.dataset.tag;
+        document.querySelectorAll('.marketplace-recipe').forEach(card => { card.parentElement.hidden = tag !== 'all' && !card.dataset.tags.includes(tag); });
+    });
+});
+</script>
 {% endblock %}

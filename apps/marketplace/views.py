@@ -52,6 +52,15 @@ def list_marketplace():
     return render_template("marketplace/index.html", recipes=COMMUNITY_RECIPES)
 
 
+@marketplace_bp.route("/<recipe_id>")
+def recipe_detail(recipe_id: str):
+    """Show a single community recipe before importing it."""
+    recipe = next((item for item in COMMUNITY_RECIPES if item["id"] == recipe_id), None)
+    if not recipe:
+        return "Recipe not found", 404
+    return render_template("marketplace/detail.html", recipe=recipe)
+
+
 @marketplace_bp.route("/install/<recipe_id>", methods=["POST"])
 def install_recipe(recipe_id: str):
     """One-click install recipe into local asset registry."""
